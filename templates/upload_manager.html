@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Upload Manager - MindCut</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css" />
+    <style>
+      .manager-layout {
+        display: grid;
+        grid-template-columns: 350px 1fr;
+        flex: 1;
+        overflow: hidden;
+      }
+      .manager-sidebar {
+        background: rgba(10, 11, 16, 0.4);
+        backdrop-filter: blur(10px);
+        border-right: 1px solid var(--border);
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .clip-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        flex: 1;
+      }
+      .clip-item {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 12px;
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .clip-item:hover {
+        background: rgba(255, 255, 255, 0.07);
+        border-color: var(--border-light);
+        transform: translateX(4px);
+      }
+      .clip-item.active {
+        border-color: var(--accent);
+        background: rgba(139, 92, 246, 0.12);
+        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+      }
+      .clip-item.uploaded .status-badge {
+        color: var(--success);
+        border-color: var(--success);
+      }
+
+      .clip-info .filename {
+        font-weight: 600;
+        font-size: 13px;
+        margin-bottom: 2px;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+        max-width: 200px;
+      }
+      .clip-info .size {
+        font-size: 11px;
+        color: var(--fg-muted);
+      }
+      .status-badge {
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        border: 1px solid var(--fg-muted);
+        color: var(--fg-muted);
+        white-space: nowrap;
+      }
+
+      .editor-workspace {
+        padding: 24px;
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 24px;
+        align-items: start;
+      }
+
+      .preview-box {
+        background: #000;
+        border-radius: var(--radius-md);
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        border: 1px solid var(--border);
+        aspect-ratio: 9/16;
+        max-height: 80vh;
+        margin: 0 auto;
+      }
+      .preview-box video {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+
+      .metadata-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .meta-textarea {
+        resize: vertical;
+        min-height: 80px;
+      }
+
+      .status-bar {
+        font-size: 13px;
+        color: var(--fg-muted);
+        text-align: center;
+        padding: 8px;
+      }
+
+      .flex-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Top Progress Overlay -->
+    <div id="topProgressWrap" class="topProgressWrap hide" aria-hidden="true">
+      <div class="topProgressBar">
+        <div id="topProgressBar" class="topProgressFill"></div>
+      </div>
+      <div id="topProgressText" class="topProgressText"></div>
+    </div>
+
+    <!-- Application Layout Shell -->
+    <div class="app-layout">
+      <!-- 1. Header -->
+      <header class="app-header">
+        <div class="header-left flex-row">
+          <div class="brand-title">Mind<span>Cut</span></div>
+          <div style="margin-left: 24px; display: flex; gap: 16px">
+            <a href="/" class="ghLink" style="font-weight: 500"
+              >Editor Studio</a
+            >
+            <span style="color: var(--border)">|</span>
+            <a
+              href="/upload-manager"
+              class="ghLink"
+              style="font-weight: bold; color: var(--fg)"
+              >Upload Manager</a
+            >
+            <span style="color: var(--border)">|</span>
+            <a
+              href="/settings"
+              class="ghLink"
+              style="font-weight: 500;"
+              >Settings</a
+            >
+          </div>
+        </div>
+        <div class="header-right">
+          <a
+            class="ghLink"
+            href="https://github.com/amaruki"
+            target="_blank"
+            rel="noreferrer"
+          >
+            <svg class="ghIcon" viewBox="0 0 16 16" aria-hidden="true">
+              <path
+                d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
+              ></path>
+            </svg>
+            <span>amaruki</span>
+          </a>
+        </div>
+      </header>
+
+      <!-- 2. Manager Main Area -->
+      <main class="manager-layout">
+        <!-- ==================== LEFT SIDEBAR: CLIP LIST ==================== -->
+        <aside class="manager-sidebar custom-scrollbar">
+          <div class="panelHead">
+            <div class="panelTitle">Clips Gallery</div>
+            <button id="refreshBtn" class="btn glass smallBtn">Refresh</button>
+          </div>
+
+          <div id="clipList" class="clip-list">
+            <div class="small" style="text-align: center; padding: 20px">
+              Loading clips...
+            </div>
+          </div>
+        </aside>
+
+        <!-- ==================== RIGHT WORKSPACE: EDITOR ==================== -->
+        <section
+          class="editor-workspace custom-scrollbar hide"
+          id="editorSection"
+        >
+          <!-- Video Preview -->
+          <div class="preview-box">
+            <video id="videoPlayer" controls playsinline></video>
+          </div>
+
+          <!-- Metadata Editor -->
+          <div class="panel metadata-panel">
+            <div class="panelHead" style="margin-bottom: 0">
+              <div class="panelTitle">Publishing Metadata</div>
+            </div>
+
+            <div class="row" style="margin-top: 8px">
+              <div
+                style="
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                "
+              >
+                <label class="label">YouTube Channel</label>
+                <button id="linkAccountBtn" class="btn ghost smallBtn">
+                  Link New Channel
+                </button>
+              </div>
+              <select id="metaAccount" class="input mt-xs">
+                <option value="" disabled selected>Loading channels...</option>
+              </select>
+            </div>
+
+            <hr
+              style="
+                border: none;
+                border-top: 1px solid var(--border);
+                margin: 8px 0;
+              "
+            />
+
+            <div class="row" style="margin-top: 8px">
+              <div
+                style="
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                "
+              >
+                <label class="label">AI Auto-Generate</label>
+                <button id="metaGenerateBtn" class="btn ghost smallBtn">
+                  Re-Generate with AI
+                </button>
+              </div>
+              <input
+                id="metaAiPrompt"
+                class="input mt-xs"
+                placeholder="Custom AI instructions..."
+              />
+            </div>
+
+            <hr
+              style="
+                border: none;
+                border-top: 1px solid var(--border);
+                margin: 8px 0;
+              "
+            />
+
+            <div class="row">
+              <label class="label">Title</label>
+              <input id="metaTitle" class="input" placeholder="Video Title" />
+            </div>
+
+            <div class="row">
+              <label class="label">Description</label>
+              <textarea
+                id="metaDesc"
+                class="input meta-textarea"
+                placeholder="Video Description..."
+              ></textarea>
+            </div>
+
+            <div class="row">
+              <label class="label">Tags (comma separated)</label>
+              <input
+                id="metaTags"
+                class="input"
+                placeholder="Shorts, Gaming, Trending"
+              />
+            </div>
+
+            <div class="grid2">
+              <div class="row">
+                <label class="label">Privacy</label>
+                <select id="metaPrivacy" class="input">
+                  <option value="private" selected>Private</option>
+                  <option value="unlisted">Unlisted</option>
+                  <option value="public">Public</option>
+                </select>
+              </div>
+              <div class="row">
+                <label class="label">Schedule (Optional)</label>
+                <input id="metaDate" type="datetime-local" class="input" />
+              </div>
+            </div>
+
+            <div class="actions-stack mt-md">
+              <button id="saveBtn" class="btn primary-gradient">
+                Save Metadata
+              </button>
+              <button
+                id="uploadBtn"
+                class="btn primary-solid"
+                style="background: #ef4444"
+              >
+                Upload to YouTube
+              </button>
+            </div>
+
+            <div id="statusBar" class="status-bar"></div>
+          </div>
+        </section>
+
+        <!-- Placeholder when nothing is selected -->
+        <section
+          id="emptyWorkspace"
+          class="editor-workspace"
+          style="
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--fg-muted);
+          "
+        >
+          Select a clip from the list to view and manage it.
+        </section>
+      </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal" class="modal hide" role="dialog" aria-modal="true">
+      <div class="modalBackdrop" id="modalBackdrop"></div>
+      <div class="modalCard">
+        <div class="modalTop">
+          <div id="modalTitle" class="modalTitle"></div>
+          <button id="modalClose" class="iconBtn" aria-label="Close">✕</button>
+        </div>
+        <div id="modalBody" class="modalBody custom-scrollbar"></div>
+      </div>
+    </div>
+
+    <script src="/static/upload_manager.js"></script>
+  </body>
+</html>

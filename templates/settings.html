@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Settings - MindCut</title>
+    <!-- Link the fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css" />
+    <style>
+      .settings-layout {
+        display: flex;
+        justify-content: center;
+        padding: 40px 24px;
+        flex: 1;
+        overflow-y: auto;
+      }
+      .settings-container {
+        width: 100%;
+        max-width: 800px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+      .settings-header {
+        margin-bottom: 8px;
+      }
+      .settings-header h1 {
+        font-size: 24px;
+        font-weight: 600;
+        margin: 0;
+        color: var(--fg);
+      }
+      .settings-header p {
+        color: var(--fg-muted);
+        margin-top: 4px;
+        font-size: 14px;
+      }
+      .settings-panel {
+        background: var(--bg-panel);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        box-shadow: var(--shadow-sm);
+        backdrop-filter: blur(10px);
+      }
+      .settings-panel h2 {
+        font-size: 16px;
+        font-weight: 600;
+        margin: 0 0 16px 0;
+        color: var(--accent);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--border);
+      }
+      /* Ensure layout of settings matches index */
+      .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      .row { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+      .row:last-child { margin-bottom: 0; }
+    </style>
+  </head>
+  <body>
+    <!-- Top Progress Overlay -->
+    <div id="topProgressWrap" class="topProgressWrap hide" aria-hidden="true">
+      <div class="topProgressBar">
+        <div id="topProgressBar" class="topProgressFill"></div>
+      </div>
+      <div id="topProgressText" class="topProgressText"></div>
+    </div>
+
+    <!-- Application Layout Shell -->
+    <div class="app-layout">
+      <!-- 1. Header -->
+      <header class="app-header">
+        <div class="header-left flex-row">
+          <div class="brand-title">Mind<span>Cut</span></div>
+          <div style="margin-left: 24px; display: flex; gap: 16px;">
+            <a href="/" class="ghLink" style="font-weight: 500;">Editor Studio</a>
+            <span style="color: var(--border);">|</span>
+            <a href="/upload-manager" class="ghLink" style="font-weight: 500;">Upload Manager</a>
+            <span style="color: var(--border);">|</span>
+            <a href="/settings" class="ghLink" style="font-weight: bold; color: var(--fg);">Settings</a>
+          </div>
+        </div>
+        <div class="header-right">
+          <div class="langSwitch" role="group" aria-label="Language">
+            <button id="langId" class="langBtn isActive" type="button" aria-label="Bahasa Indonesia" title="Bahasa Indonesia">
+              <span>ID</span>
+            </button>
+            <button id="langEn" class="langBtn" type="button" aria-label="English" title="English">
+              <span>EN</span>
+            </button>
+          </div>
+          <a class="ghLink" href="https://github.com/amaruki" target="_blank" rel="noreferrer">
+            <svg class="ghIcon" viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"></path>
+            </svg>
+            <span>amaruki</span>
+          </a>
+        </div>
+      </header>
+
+      <!-- 2. Settings Main Area -->
+      <main class="settings-layout custom-scrollbar">
+        <div class="settings-container">
+          <div class="settings-header">
+            <h1 data-i18n="settings.title">Application Settings</h1>
+            <p data-i18n="settings.subtitle">Configure your default preferences for clip generation and AI features.</p>
+          </div>
+
+          <!-- Output Formatting Settings -->
+          <div class="settings-panel">
+            <h2>Output Formatting</h2>
+            <div class="grid2">
+              <div class="row">
+                <label class="label" data-i18n="label.ratio">Ratio Default</label>
+                <select id="ratio" class="input">
+                  <option value="9:16" selected data-i18n="opt.ratio.9_16">9:16 (Shorts)</option>
+                  <option value="1:1">1:1</option>
+                  <option value="16:9">16:9</option>
+                  <option value="original" data-i18n="opt.ratio.original">Original</option>
+                </select>
+              </div>
+              <div class="row">
+                <label class="label" data-i18n="label.crop">Crop Target Default</label>
+                <select id="crop" class="input">
+                  <option value="default" selected>Default</option>
+                  <option value="face">Face Track</option>
+                  <option value="split_left">Split Left</option>
+                  <option value="split_right">Split Right</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid2">
+              <div class="row">
+                <label class="label">Pad (sec)</label>
+                <input id="padding" class="input" type="number" min="0" value="10" />
+              </div>
+              <div class="row">
+                <label class="label" data-i18n="label.max_clips">Max clips limit</label>
+                <input id="max_clips" class="input" type="number" min="1" value="6" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Subtitles & Transcribe -->
+          <div class="settings-panel">
+            <h2>Subtitles & Transcribe</h2>
+            <div class="grid2">
+              <div class="row">
+                <label class="label" data-i18n="label.subtitle">Enable Burn-in by Default</label>
+                <select id="subtitle" class="input">
+                  <option value="n" selected data-i18n="opt.no">No</option>
+                  <option value="y" data-i18n="opt.yes">Yes</option>
+                </select>
+              </div>
+              <div class="row">
+                <label class="label" data-i18n="label.whisper_model">Model</label>
+                <select id="whisper_model" class="input">
+                  <option value="tiny">tiny</option>
+                  <option value="base">base</option>
+                  <option value="small" selected>small</option>
+                  <option value="large-v3">large</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid2">
+              <div class="row">
+                <label class="label" data-i18n="label.subtitle_font">Font Face</label>
+                <select id="subtitle_font_select" class="input">
+                  <option value="Plus Jakarta Sans" selected>Plus Jakarta Sans</option>
+                  <option value="Montserrat">Montserrat</option>
+                  <option value="custom" data-i18n="opt.custom">Custom...</option>
+                </select>
+                <input id="subtitle_font_custom" class="input hide mt-xs" placeholder="Custom font name" />
+              </div>
+              <div class="row">
+                <label class="label">Location</label>
+                <select id="subtitle_location" class="input">
+                  <option value="bottom" selected>Bottom</option>
+                  <option value="center">Centered</option>
+                </select>
+              </div>
+            </div>
+            <div class="row">
+              <label class="label">Fonts Directory</label>
+              <input id="subtitle_fontsdir" class="input" value="fonts" placeholder="fonts" />
+            </div>
+          </div>
+
+          <!-- Advanced AI Control -->
+          <div class="settings-panel">
+            <h2>Advanced AI Control</h2>
+            <div class="grid2">
+              <div class="row">
+                <label class="label">API URL</label>
+                <input id="ai_api_url" class="input" placeholder="https://api.openai.com/..." />
+              </div>
+              <div class="row">
+                <label class="label">AI Model</label>
+                <input id="ai_model" class="input" placeholder="gpt-4o" />
+              </div>
+            </div>
+            <div class="row">
+              <label class="label">API Key</label>
+              <input id="ai_api_key" class="input" type="password" placeholder="sk-..." />
+            </div>
+            
+            <div class="row mt-sm">
+              <label class="label">Segment Prompt</label>
+              <textarea id="ai_prompt" class="input" rows="3" placeholder="Instructions..."></textarea>
+            </div>
+            <div class="row">
+              <label class="label">Metadata Prompt</label>
+              <textarea id="ai_metadata_prompt" class="input" rows="3" placeholder="Output goals..."></textarea>
+            </div>
+          </div>
+
+          <!-- Save Button -->
+          <div style="display: flex; justify-content: flex-end; margin-top: 16px;">
+            <button id="saveSettingsBtn" class="btn primary-gradient" style="padding: 12px 24px; font-size: 15px;">Save Settings</button>
+          </div>
+          <div id="settingsToast" class="hide text-center highlight mt-xs">Settings saved successfully!</div>
+
+        </div>
+      </main>
+    </div>
+
+    <script>
+      // Simple logic to persist settings to localStorage
+      document.addEventListener('DOMContentLoaded', () => {
+        const inputIds = [
+          'ratio', 'crop', 'padding', 'max_clips',
+          'subtitle', 'whisper_model', 'subtitle_font_select', 'subtitle_font_custom', 'subtitle_location', 'subtitle_fontsdir',
+          'ai_api_url', 'ai_model', 'ai_api_key', 'ai_prompt', 'ai_metadata_prompt'
+        ];
+
+        // Load saved setings
+        inputIds.forEach(id => {
+          const el = document.getElementById(id);
+          const saved = localStorage.getItem(`yt_config_${id}`);
+          if (el && saved !== null) {
+            el.value = saved;
+          }
+        });
+
+        // Toggle custom font display
+        const fontSel = document.getElementById("subtitle_font_select");
+        const fontCus = document.getElementById("subtitle_font_custom");
+        if(fontSel && fontCus) {
+          fontSel.addEventListener("change", () => {
+            if (fontSel.value === "custom") fontCus.classList.remove("hide");
+            else fontCus.classList.add("hide");
+          });
+          if (fontSel.value === "custom") fontCus.classList.remove("hide");
+        }
+
+        // Save settings
+        document.getElementById('saveSettingsBtn').addEventListener('click', () => {
+          inputIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+              localStorage.setItem(`yt_config_${id}`, el.value);
+            }
+          });
+          const toast = document.getElementById('settingsToast');
+          toast.classList.remove('hide');
+          setTimeout(() => toast.classList.add('hide'), 3000);
+        });
+      });
+    </script>
+  </body>
+</html>

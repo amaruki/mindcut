@@ -1,0 +1,76 @@
+# --- MindCut .gitignore ---
+
+# Output & Downloads
+clips/
+downloads/
+images/
+*.mp4
+*.mkv
+*.avi
+*.mov
+temp_*
+temp_*.srt
+temp_cropped_*.mp4
+
+# Secrets & Configuration
+.env
+token.json
+client_secret.json
+accounts.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+.nox/
+.tox/
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# IDE & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Model & Cache
+.cache/
+models/
+
+# Logs
+*.log
+
+# Test files
+test.py
+check_*.py
+debug_*.py
