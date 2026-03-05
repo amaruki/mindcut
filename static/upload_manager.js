@@ -45,6 +45,40 @@ document.addEventListener("DOMContentLoaded", () => {
                             type === "success" ? "var(--success)" : "var(--fg-muted)";
   }
 
+  /**
+   * Returns the next optimal US posting time as a datetime-local string.
+   * Optimal slots (EST/UTC-5): 9 AM, 2 PM, 5 PM — peak YouTube engagement.
+   * It picks the nearest future slot. If all 3 are past today, uses 9 AM tomorrow.
+   */
+  function getNextOptimalUSTime() {
+    const pad = n => n.toString().padStart(2, '0');
+    const EST_OFFSET = -5; // EST = UTC-5
+    const OPTIMAL_HOURS_EST = [9, 14, 17]; // 9 AM, 2 PM, 5 PM EST
+
+    const now = new Date();
+    // Current time in UTC
+    const nowUtc = now.getTime() + now.getTimezoneOffset() * 60000;
+
+    for (const estHour of OPTIMAL_HOURS_EST) {
+      // Convert EST hour to UTC
+      const utcHour = estHour - EST_OFFSET; // e.g. 9 AM EST = 14 UTC
+      const candidate = new Date(nowUtc);
+      candidate.setUTCHours(utcHour, 0, 0, 0);
+      // Convert back to local time
+      const local = new Date(candidate.getTime() - now.getTimezoneOffset() * 60000);
+      if (local > now) {
+        return `${local.getFullYear()}-${pad(local.getMonth()+1)}-${pad(local.getDate())}T${pad(local.getHours())}:${pad(local.getMinutes())}`;
+      }
+    }
+
+    // All slots passed today — use 9 AM EST tomorrow
+    const tomorrow = new Date(nowUtc + 86400000);
+    const utcHour = OPTIMAL_HOURS_EST[0] - EST_OFFSET;
+    tomorrow.setUTCHours(utcHour, 0, 0, 0);
+    const local = new Date(tomorrow.getTime() - now.getTimezoneOffset() * 60000);
+    return `${local.getFullYear()}-${pad(local.getMonth()+1)}-${pad(local.getDate())}T${pad(local.getHours())}:${pad(local.getMinutes())}`;
+  }
+
   function formatBytes(bytes) {
     if (bytes === 0) return "0 B";
     const k = 1024;
@@ -257,7 +291,7 @@ document.addEventListener("DOMContentLoaded", () => {
     metaDesc.value = "";
     metaTags.value = "";
     metaPrivacy.value = "private";
-    metaDate.value = "";
+    metaDate.value = getNextOptimalUSTime();
     metaAiPrompt.value = "";
     showStatus("Loading metadata...");
     
