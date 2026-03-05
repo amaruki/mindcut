@@ -16,23 +16,30 @@ AI_API_KEY = os.getenv("AI_API_KEY", "")
 AI_SEGMENT_PROMPT = os.getenv("AI_SEGMENT_PROMPT", "")
 AI_METADATA_PROMPT = os.getenv("AI_METADATA_PROMPT", "")
 
-OUTPUT_DIR = "clips"      # Directory where generated clips will be saved
-MAX_DURATION = 60         # Maximum duration (in seconds) for each clip
-MIN_SCORE = 0.40          # Minimum heatmap intensity score to be considered viral
-MAX_CLIPS = 10            # Maximum number of clips to generate per video
-MAX_WORKERS = 1           # Number of parallel workers (reserved for future concurrency)
-PADDING = 10              # Extra seconds added before and after each detected segment
-TOP_HEIGHT = 960          # Height for top section (center content) in split mode
-BOTTOM_HEIGHT = 320       # Height for bottom section (facecam) in split mode
-USE_SUBTITLE = True       # Enable auto subtitle using Faster-Whisper (4-5x faster)
-WHISPER_MODEL = "small"    # Whisper model size: tiny, base, small, medium, large
+OUTPUT_DIR = "clips"  # Directory where generated clips will be saved
+MAX_DURATION = 60  # Maximum duration (in seconds) for each clip
+MIN_SCORE = 0.40  # Minimum heatmap intensity score to be considered viral
+MAX_CLIPS = 10  # Maximum number of clips to generate per video
+MAX_WORKERS = 1  # Number of parallel workers (reserved for future concurrency)
+PADDING = 10  # Extra seconds added before and after each detected segment
+TOP_HEIGHT = 960  # Height for top section (center content) in split mode
+BOTTOM_HEIGHT = 320  # Height for bottom section (facecam) in split mode
+USE_SUBTITLE = True  # Enable auto subtitle using Faster-Whisper (4-5x faster)
+WHISPER_MODEL = "small"  # Whisper model size: tiny, base, small, medium, large
 SUBTITLE_FONT = "Arial"
 SUBTITLE_FONTS_DIR = None
 SUBTITLE_LOCATION = "bottom"
 OUTPUT_RATIO = "9:16"
 OUT_WIDTH = 1080
 OUT_HEIGHT = 1920
-COOKIES_BROWSER = ""      # Browser to use for extracting cookies (e.g., "chrome", "edge")
+COOKIES_BROWSER = ""  # Browser to use for extracting cookies (e.g., "chrome", "edge")
+
+# Hook Intro Settings
+HOOK_ENABLED = False
+HOOK_VOICE = "en-US-GuyNeural"
+HOOK_VOICE_RATE = "+15%"
+HOOK_VOICE_PITCH = "+5Hz"
+HOOK_FONT_SIZE = 72
 
 
 def set_ratio_preset(preset):
@@ -53,8 +60,21 @@ def set_ratio_preset(preset):
     raise ValueError("Invalid ratio preset")
 
 
-def set_ai_config(api_url=None, model=None, api_key=None, segment_prompt=None, metadata_prompt=None, cookies_browser=None):
-    global AI_API_URL, AI_MODEL, AI_API_KEY, AI_SEGMENT_PROMPT, AI_METADATA_PROMPT, COOKIES_BROWSER
+def set_ai_config(
+    api_url=None,
+    model=None,
+    api_key=None,
+    segment_prompt=None,
+    metadata_prompt=None,
+    cookies_browser=None,
+):
+    global \
+        AI_API_URL, \
+        AI_MODEL, \
+        AI_API_KEY, \
+        AI_SEGMENT_PROMPT, \
+        AI_METADATA_PROMPT, \
+        COOKIES_BROWSER
     if api_url:
         AI_API_URL = api_url
     if model:
@@ -68,8 +88,10 @@ def set_ai_config(api_url=None, model=None, api_key=None, segment_prompt=None, m
     if cookies_browser is not None:
         COOKIES_BROWSER = str(cookies_browser).strip()
 
+
 def get_cookie_args():
     import os
+
     base_args = ["--js-runtimes", "node", "--remote-components", "ejs:github"]
     if os.path.exists("cookies.txt"):
         return ["--cookies", "cookies.txt"] + base_args
@@ -126,16 +148,21 @@ def discover_ai_model():
 
     # Try to discover models from API
     import requests
+
     base_url = AI_API_URL.rstrip("/")
     # Strip /chat/completions if present to get base
     if base_url.endswith("/chat/completions"):
-        base_url = base_url[:-len("/chat/completions")]
+        base_url = base_url[: -len("/chat/completions")]
     models_url = base_url + "/models"
 
     try:
-        resp = requests.get(models_url, headers={
-            "Authorization": f"Bearer {AI_API_KEY}" if AI_API_KEY else "",
-        }, timeout=10)
+        resp = requests.get(
+            models_url,
+            headers={
+                "Authorization": f"Bearer {AI_API_KEY}" if AI_API_KEY else "",
+            },
+            timeout=10,
+        )
         resp.raise_for_status()
         data = resp.json()
         models = data.get("data", [])
@@ -144,7 +171,9 @@ def discover_ai_model():
             model_id = models[0].get("id", "")
             if model_id:
                 _discovered_model = model_id
-                print(f"INFO Auto-discovered AI model: {model_id} (from {len(models)} available)")
+                print(
+                    f"INFO Auto-discovered AI model: {model_id} (from {len(models)} available)"
+                )
                 return _discovered_model
     except Exception as e:
         print(f"INFO Could not discover models from {models_url}: {e}")

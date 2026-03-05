@@ -174,7 +174,8 @@ const I18N = {
     "js.stage.subtitle_model_load": "Load model",
     "js.stage.subtitle_transcribe": "Transcribe",
     "js.stage.subtitle_write": "Write subtitles",
-    "js.stage.burn_subtitle": "Burn subtitles",
+    "js.stage.burn_subtitle": "Burn subtitle",
+    "js.stage.hook": "Hook Intro",
     "js.stage.finalize": "Finalize",
     "js.stage.done_clip": "Done",
     "js.topprogress.processing": "Processing",
@@ -245,6 +246,7 @@ function stageLabel(stage) {
     subtitle_transcribe: "js.stage.subtitle_transcribe",
     subtitle_write: "js.stage.subtitle_write",
     burn_subtitle: "js.stage.burn_subtitle",
+    hook: "js.stage.hook",
     finalize: "js.stage.finalize",
     done_clip: "js.stage.done_clip",
   }[stage];
@@ -286,8 +288,9 @@ function computeJobPct(job) {
 
   const mapNoSub = {
     download: { a: 0.04, b: 0.62, d: 14000 },
-    crop: { a: 0.62, b: 0.96, d: 9000 },
-    finalize: { a: 0.96, b: 0.995, d: 2500 },
+    crop: { a: 0.62, b: 0.95, d: 9000 },
+    hook: { a: 0.95, b: 0.985, d: 8000 },
+    finalize: { a: 0.985, b: 0.995, d: 2500 },
     done_clip: { a: 1, b: 1, d: 0 },
   };
   const mapSub = {
@@ -297,8 +300,9 @@ function computeJobPct(job) {
     subtitle_model_load: { a: 0.87, b: 0.885, d: 2500 },
     subtitle_transcribe: { a: 0.885, b: 0.93, d: 20000 },
     subtitle_write: { a: 0.93, b: 0.94, d: 1800 },
-    burn_subtitle: { a: 0.94, b: 0.985, d: 12000 },
-    finalize: { a: 0.985, b: 0.995, d: 2500 },
+    burn_subtitle: { a: 0.94, b: 0.97, d: 12000 },
+    hook: { a: 0.97, b: 0.99, d: 8000 },
+    finalize: { a: 0.99, b: 0.998, d: 1500 },
     done_clip: { a: 1, b: 1, d: 0 },
   };
 
@@ -435,7 +439,8 @@ function readPayload() {
     ratio: "9:16", crop: "default", padding: 10, max_clips: 6,
     subtitle: "n", whisper_model: "small", subtitle_font_select: "Plus Jakarta Sans",
     subtitle_font_custom: "", subtitle_location: "bottom", subtitle_fontsdir: "fonts",
-    ai_api_url: "", ai_model: "gpt-4o", ai_api_key: "", ai_prompt: "", ai_metadata_prompt: ""
+    ai_api_url: "", ai_model: "gpt-4o", ai_api_key: "", ai_prompt: "", ai_metadata_prompt: "",
+    hook_enabled: "n", hook_voice: "en-US-GuyNeural", hook_voice_rate: "+15%", hook_voice_pitch: "+5Hz", hook_font_size: 72
   };
   
   const getVal = (id) => {
@@ -469,6 +474,11 @@ function readPayload() {
     ai_prompt: getVal("ai_prompt") || "",
     ai_metadata_prompt: getVal("ai_metadata_prompt") || "",
     cookies_browser: $("cookies_browser")?.value || "",
+    hook_enabled: getVal("hook_enabled") === "y",
+    hook_voice: getVal("hook_voice"),
+    hook_voice_rate: getVal("hook_voice_rate"),
+    hook_voice_pitch: getVal("hook_voice_pitch"),
+    hook_font_size: Number(getVal("hook_font_size") || 72),
     video_title: typeof currentPreview !== "undefined" && currentPreview ? currentPreview.title : ""
   };
 }

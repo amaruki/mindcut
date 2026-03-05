@@ -363,6 +363,11 @@ def run_job(job_id, payload):
         ai_prompt = (payload.get("ai_prompt") or "").strip()
         ai_metadata_prompt = (payload.get("ai_metadata_prompt") or "").strip()
         cookies_browser = (payload.get("cookies_browser") or "").strip()
+        hook_enabled = bool(payload.get("hook_enabled"))
+        hook_voice = payload.get("hook_voice") or "en-US-GuyNeural"
+        hook_voice_rate = payload.get("hook_voice_rate") or "+15%"
+        hook_voice_pitch = payload.get("hook_voice_pitch") or "+5Hz"
+        hook_font_size = safe_int(payload.get("hook_font_size"), 72)
         jobs.update(job_id, subtitle_enabled=subtitle)
 
         config.WHISPER_MODEL = whisper_model
@@ -370,6 +375,11 @@ def run_job(job_id, payload):
         config.SUBTITLE_FONTS_DIR = subtitle_fontsdir
         config.SUBTITLE_LOCATION = subtitle_location
         config.PADDING = max(0, padding if padding is not None else 10)
+        config.HOOK_ENABLED = hook_enabled
+        config.HOOK_VOICE = hook_voice
+        config.HOOK_VOICE_RATE = hook_voice_rate
+        config.HOOK_VOICE_PITCH = hook_voice_pitch
+        config.HOOK_FONT_SIZE = hook_font_size
         config.set_ratio_preset(ratio)
         core.set_ai_config(
             api_url=ai_api_url or None,
@@ -1107,6 +1117,100 @@ def api_generate_clip_metadata():
 def serve_clip(job_id, filename):
     job_dir = os.path.join("clips", job_id)
     return send_from_directory(job_dir, filename, as_attachment=True)
+
+
+@app.post("/api/tts/preview")
+def api_tts_preview():
+    data = request.get_json(silent=True) or {}
+    text = data.get("text", "This is a preview of the hook voice.")
+    voice = data.get("voice", "en-US-GuyNeural")
+    rate = data.get("rate", "+15%")
+    pitch = data.get("pitch", "+5Hz")
+
+    import asyncio
+    from core.media.hook import generate_tts
+
+    os.makedirs("temp_preview", exist_ok=True)
+    filename = f"preview_{uuid.uuid4().hex}.mp3"
+    path = os.path.join("temp_preview", filename)
+
+    try:
+        asyncio.run(generate_tts(text, voice, path, rate=rate, pitch=pitch))
+        return send_from_directory("temp_preview", filename)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.post("/api/clips/hook")
+def api_add_hook_manual():
+    data = request.get_json(silent=True) or {}
+    job_id = data.get("job_id")
+    filename = data.get("filename")
+    voice = data.get("voice") or config.HOOK_VOICE
+    rate = data.get("rate") or config.HOOK_VOICE_RATE
+    pitch = data.get("pitch") or config.HOOK_VOICE_PITCH
+    font_size = safe_int(data.get("font_size"), config.HOOK_FONT_SIZE)
+
+    if not job_id or not filename:
+        return jsonify({"ok": False, "error": "Missing job_id or filename"}), 400
+
+    clip_path = os.path.join("clips", str(job_id), str(filename))
+    meta_path = clip_path.replace(".mp4", ".meta.json")
+
+    if not os.path.exists(clip_path) or not os.path.exists(meta_path):
+        return jsonify({"ok": False, "error": "Clip or metadata not found"}), 404
+
+    try:
+        with open(meta_path, "r", encoding="utf-8") as f:
+            meta = json.load(f)
+
+        # Pick hook text
+        import random
+
+        publishing = meta.get("publishing", {})
+        hook_variants = publishing.get("hook_variants", [])
+        hook_text = ""
+        if hook_variants and isinstance(hook_variants, list):
+            hook_text = random.choice(hook_variants)
+        if not hook_text:
+            hook_text = (
+                publishing.get("hook")
+                or meta.get("hook_preview")
+                or meta.get("text", "")[:100]
+            )
+
+        if not hook_text:
+            return jsonify(
+                {"ok": False, "error": "No hook text found in metadata"}
+            ), 400
+
+        from core.media.hook import prepend_hook_intro
+
+        temp_output = clip_path + ".manual_hook.mp4"
+        success = prepend_hook_intro(
+            clip_path=clip_path,
+            hook_text=hook_text,
+            output_path=temp_output,
+            voice=voice,
+            font_size=font_size,
+            rate=rate,
+            pitch=pitch,
+        )
+
+        if success and os.path.exists(temp_output):
+            os.replace(temp_output, clip_path)
+            # Update meta
+            meta["has_hook"] = True
+            with open(meta_path, "w", encoding="utf-8") as f:
+                json.dump(meta, f, indent=2)
+            return jsonify({"ok": True})
+        else:
+            if os.path.exists(temp_output):
+                os.remove(temp_output)
+            return jsonify({"ok": False, "error": "Hook generation failed"}), 500
+
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 if __name__ == "__main__":

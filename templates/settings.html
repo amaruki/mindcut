@@ -192,6 +192,47 @@
             </div>
           </div>
 
+          <!-- Hook Intro Settings -->
+          <div class="settings-panel">
+            <h2>Hook Intro (New)</h2>
+            <div class="grid2">
+              <div class="row">
+                <label class="label">Enable Hook Intro</label>
+                <select id="hook_enabled" class="input">
+                  <option value="n" selected>No</option>
+                  <option value="y">Yes</option>
+                </select>
+              </div>
+              <div class="row">
+                <label class="label">Hook Voice</label>
+                <div style="display: flex; gap: 8px;">
+                  <select id="hook_voice" class="input" style="flex:1;">
+                    <option value="en-US-GuyNeural" selected>English - Guy (Male)</option>
+                    <option value="en-US-AvaNeural">English - Ava (Female)</option>
+                    <option value="en-GB-SoniaNeural">British - Sonia (Female)</option>
+                    <option value="id-ID-ArdiNeural">Indonesia - Ardi (Male)</option>
+                    <option value="id-ID-GadisNeural">Indonesia - Gadis (Female)</option>
+                  </select>
+                  <button id="testVoiceBtn" class="btn glass" type="button" style="padding: 0 12px; height: 38px;">🔊</button>
+                </div>
+              </div>
+            </div>
+            <div class="grid2">
+              <div class="row">
+                <label class="label">Voice Speed (Rate)</label>
+                <input id="hook_voice_rate" class="input" type="text" value="+15%" placeholder="+15% or -10%" />
+              </div>
+              <div class="row">
+                <label class="label">Voice Pitch</label>
+                <input id="hook_voice_pitch" class="input" type="text" value="+5Hz" placeholder="+5Hz or -2st" />
+              </div>
+            </div>
+            <div class="row">
+              <label class="label">Hook Font Size</label>
+              <input id="hook_font_size" class="input" type="number" min="20" max="200" value="72" />
+            </div>
+          </div>
+
           <!-- Advanced AI Control -->
           <div class="settings-panel">
             <h2>Advanced AI Control</h2>
@@ -236,6 +277,7 @@
         const inputIds = [
           'ratio', 'crop', 'padding', 'max_clips',
           'subtitle', 'whisper_model', 'subtitle_font_select', 'subtitle_font_custom', 'subtitle_location', 'subtitle_fontsdir',
+          'hook_enabled', 'hook_voice', 'hook_voice_rate', 'hook_voice_pitch', 'hook_font_size',
           'ai_api_url', 'ai_model', 'ai_api_key', 'ai_prompt', 'ai_metadata_prompt'
         ];
 
@@ -245,6 +287,33 @@
           const saved = localStorage.getItem(`yt_config_${id}`);
           if (el && saved !== null) {
             el.value = saved;
+          }
+        });
+
+        // Test Voice
+        document.getElementById('testVoiceBtn').addEventListener('click', async () => {
+          const btn = document.getElementById('testVoiceBtn');
+          const voice = document.getElementById('hook_voice').value;
+          const rate = document.getElementById('hook_voice_rate').value;
+          const pitch = document.getElementById('hook_voice_pitch').value;
+          btn.disabled = true;
+          btn.textContent = "...";
+          try {
+            const res = await fetch('/api/tts/preview', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ voice, rate, pitch, text: "Testing the hook voice. How does it sound?" })
+            });
+            if (!res.ok) throw new Error('Failed to generate preview');
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const audio = new Audio(url);
+            audio.play();
+          } catch (e) {
+            alert(e.message);
+          } finally {
+            btn.disabled = false;
+            btn.textContent = "🔊";
           }
         });
 

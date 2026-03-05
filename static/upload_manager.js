@@ -478,6 +478,47 @@ document.addEventListener("DOMContentLoaded", () => {
   metaGenerateBtn.addEventListener("click", generateMetadata);
   uploadBtn.addEventListener("click", uploadToYouTube);
   linkAccountBtn.addEventListener("click", linkAccount);
+  document.getElementById('addHookBtn').addEventListener('click', addHookIntro);
+
+  async function addHookIntro() {
+    if (!currentClip) return;
+    const btn = document.getElementById('addHookBtn');
+    const oldText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Processing...";
+    showStatus("Generating hook intro (extracting face frame, TTS, etc)...", "info");
+
+    try {
+      const voice = localStorage.getItem('yt_config_hook_voice') || 'en-US-GuyNeural';
+      const rate = localStorage.getItem('yt_config_hook_voice_rate') || '+15%';
+      const pitch = localStorage.getItem('yt_config_hook_voice_pitch') || '+5Hz';
+      const fontSize = localStorage.getItem('yt_config_hook_font_size') || '72';
+
+      const res = await fetch('/api/clips/hook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          job_id: currentClip.job_id,
+          filename: currentClip.filename,
+          voice: voice,
+          rate: rate,
+          pitch: pitch,
+          font_size: fontSize
+        })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showStatus("Hook intro added successfully!", "success");
+      } else {
+        throw new Error(data.error || "Unknown error");
+      }
+    } catch (e) {
+      showStatus("Error: " + e.message, "error");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = oldText;
+    }
+  }
 
   // Initial load
   loadAccounts();

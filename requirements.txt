@@ -75,3 +75,6 @@ uritemplate==4.2.0
 urllib3==2.6.3
 werkzeug==3.1.6
 yt-dlp==2026.2.21
+edge-tts
+
+

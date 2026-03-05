@@ -18,6 +18,8 @@ from .subtitles import (
     escape_subtitles_filter_path,
     generate_subtitle,
 )
+from .hook import prepend_hook_intro
+import random
 from ..analysis.metadata import generate_publishing_metadata
 
 
@@ -842,6 +844,46 @@ def process_single_clip(
         else:
             _fire(event_hook, "stage", {"stage": "finalize", "clip_index": index})
             os.rename(cropped_file, output_file)
+
+        # ── 4.5 Hook Intro (Updated) ───────────────────────────────────
+        if config.HOOK_ENABLED:
+            # Pick hook text
+            # Fallback chain: publishing.hook_variants (random) -> publishing.hook -> hook_preview -> item text
+            publishing = item.get("publishing", {})
+            hook_variants = publishing.get("hook_variants", [])
+            hook_text = ""
+
+            if hook_variants and isinstance(hook_variants, list):
+                hook_text = random.choice(hook_variants)
+
+            if not hook_text:
+                hook_text = (
+                    publishing.get("hook")
+                    or item.get("hook_preview")
+                    or item.get("text", "")[:100]
+                )
+
+            if hook_text and os.path.exists(output_file):
+                _fire(event_hook, "stage", {"stage": "hook", "clip_index": index})
+                print(f'  Adding hook intro: "{hook_text[:40]}..."')
+
+                temp_hook_output = output_file + ".hooked.mp4"
+                success = prepend_hook_intro(
+                    clip_path=output_file,
+                    hook_text=hook_text,
+                    output_path=temp_hook_output,
+                    voice=config.HOOK_VOICE,
+                    font_size=config.HOOK_FONT_SIZE,
+                    rate=config.HOOK_VOICE_RATE,
+                    pitch=config.HOOK_VOICE_PITCH,
+                )
+                if success and os.path.exists(temp_hook_output):
+                    os.replace(temp_hook_output, output_file)
+                    print("  Hook intro added successfully.")
+                else:
+                    print("  Failed to add hook intro.")
+                    if os.path.exists(temp_hook_output):
+                        os.remove(temp_hook_output)
 
         print("  Clip successfully generated.")
 

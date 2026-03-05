@@ -55,6 +55,11 @@ _CONFIG_EXPORTS = [
     "TOP_HEIGHT",
     "USE_SUBTITLE",
     "WHISPER_MODEL",
+    "HOOK_ENABLED",
+    "HOOK_VOICE",
+    "HOOK_VOICE_RATE",
+    "HOOK_VOICE_PITCH",
+    "HOOK_FONT_SIZE",
 ]
 
 
@@ -144,4 +149,9 @@ __all__ = [
     "set_ratio_preset",
     "summarize_heatmap_segments",
     "summarize_transcript_segments",
+    "HOOK_ENABLED",
+    "HOOK_VOICE",
+    "HOOK_VOICE_RATE",
+    "HOOK_VOICE_PITCH",
+    "HOOK_FONT_SIZE",
 ]
