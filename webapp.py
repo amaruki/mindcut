@@ -997,6 +997,24 @@ def upload_manager():
     return render_template("upload_manager.html")
 
 
+@app.get("/scheduled")
+def scheduled_page():
+    return render_template("scheduled.html")
+
+
+@app.get("/api/youtube/videos")
+def api_youtube_videos():
+    account_id = request.args.get("account_id") or None
+    max_results = min(int(request.args.get("max_results", 50)), 50)
+    try:
+        videos = youtube_api.list_channel_videos(
+            account_id=account_id, max_results=max_results
+        )
+        return jsonify({"ok": True, "videos": videos})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.get("/api/clips/metadata")
 def api_get_clip_metadata():
     job_id = request.args.get("job_id")

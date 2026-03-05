@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Channel Videos - MindCut</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css" />
+    <style>
+      /* ── Layout ───────────────────────────────────────────────────── */
+      .sch-layout {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        overflow: hidden;
+      }
+
+      /* ── Toolbar ──────────────────────────────────────────────────── */
+      .sch-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 20px;
+        border-bottom: 1px solid var(--border);
+        background: rgba(10, 11, 16, 0.5);
+        backdrop-filter: blur(10px);
+        flex-wrap: wrap;
+      }
+      .sch-toolbar select,
+      .sch-toolbar .btn {
+        height: 34px;
+      }
+      .sch-toolbar select {
+        max-width: 220px;
+      }
+      .sch-stats {
+        margin-left: auto;
+        font-size: 12px;
+        color: var(--fg-muted);
+        white-space: nowrap;
+      }
+
+      /* ── Filter Tabs ─────────────────────────────────────────────── */
+      .filter-tabs {
+        display: flex;
+        gap: 4px;
+        padding: 10px 20px;
+        border-bottom: 1px solid var(--border);
+        background: rgba(10, 11, 16, 0.3);
+        flex-wrap: wrap;
+      }
+      .filter-tab {
+        padding: 5px 14px;
+        border-radius: 20px;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--fg-muted);
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-family: inherit;
+      }
+      .filter-tab:hover {
+        border-color: var(--border-light);
+        color: var(--fg);
+      }
+      .filter-tab.active {
+        background: rgba(139, 92, 246, 0.2);
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .filter-tab .tab-count {
+        font-weight: 400;
+        opacity: 0.7;
+        margin-left: 4px;
+      }
+
+      /* ── Video Grid ───────────────────────────────────────────────── */
+      .sch-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+      }
+      .video-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 16px;
+      }
+
+      /* ── Video Card ───────────────────────────────────────────────── */
+      .video-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        overflow: hidden;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        text-decoration: none;
+        color: inherit;
+        display: block;
+      }
+      .video-card:hover {
+        border-color: var(--border-light);
+        transform: translateY(-3px);
+        box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+      }
+      .video-thumb {
+        position: relative;
+        aspect-ratio: 16/9;
+        overflow: hidden;
+        background: #0d0d10;
+      }
+      .video-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        transition: transform 0.3s ease;
+      }
+      .video-card:hover .video-thumb img {
+        transform: scale(1.04);
+      }
+      .thumb-duration {
+        position: absolute;
+        bottom: 6px;
+        right: 6px;
+        background: rgba(0,0,0,0.8);
+        color: #fff;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: inherit;
+      }
+      .thumb-status {
+        position: absolute;
+        top: 6px;
+        left: 6px;
+      }
+
+      /* ── Status Badge ─────────────────────────────────────────────── */
+      .status-pill {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 3px 8px;
+        border-radius: 10px;
+        white-space: nowrap;
+      }
+      .status-pill.public    { background: rgba(34,197,94,0.25);  color: #4ade80; border: 1px solid rgba(74,222,128,0.3); }
+      .status-pill.private   { background: rgba(239,68,68,0.2);   color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
+      .status-pill.unlisted  { background: rgba(251,191,36,0.2);  color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+      .status-pill.scheduled { background: rgba(139,92,246,0.25); color: #a78bfa; border: 1px solid rgba(167,139,250,0.35); }
+
+      /* ── Card Body ────────────────────────────────────────────────── */
+      .video-body {
+        padding: 12px;
+      }
+      .video-title {
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        margin-bottom: 8px;
+      }
+      .video-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        font-size: 11px;
+        color: var(--fg-muted);
+      }
+      .video-meta .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .video-meta svg {
+        width: 12px;
+        height: 12px;
+        opacity: 0.6;
+        flex-shrink: 0;
+      }
+      .schedule-row {
+        margin-top: 8px;
+        font-size: 11px;
+        color: #a78bfa;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .schedule-row svg {
+        width: 11px;
+        height: 11px;
+        flex-shrink: 0;
+      }
+
+      /* ── Empty / Loading ──────────────────────────────────────────── */
+      .sch-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 80px 20px;
+        color: var(--fg-muted);
+        text-align: center;
+        gap: 12px;
+      }
+      .sch-state svg {
+        width: 48px;
+        height: 48px;
+        opacity: 0.3;
+      }
+      .sch-state .state-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--fg);
+        opacity: 0.5;
+      }
+      .sch-state p {
+        font-size: 13px;
+        max-width: 340px;
+        line-height: 1.6;
+      }
+
+      .spinner {
+        width: 32px; height: 32px;
+        border: 3px solid var(--border);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        opacity: 1;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+  </head>
+  <body>
+    <div class="app-layout">
+      <!-- Header -->
+      <header class="app-header">
+        <div class="header-left flex-row">
+          <div class="brand-title">Mind<span>Cut</span></div>
+          <div style="margin-left: 24px; display: flex; gap: 16px">
+            <a href="/" class="ghLink" style="font-weight: 500">Editor Studio</a>
+            <span style="color: var(--border)">|</span>
+            <a href="/upload-manager" class="ghLink" style="font-weight: 500">Upload Manager</a>
+            <span style="color: var(--border)">|</span>
+            <a href="/scheduled" class="ghLink" style="font-weight: bold; color: var(--fg)">Channel Videos</a>
+            <span style="color: var(--border)">|</span>
+            <a href="/settings" class="ghLink" style="font-weight: 500">Settings</a>
+          </div>
+        </div>
+        <div class="header-right">
+          <a class="ghLink" href="https://github.com/amaruki" target="_blank" rel="noreferrer">
+            <svg class="ghIcon" viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"></path>
+            </svg>
+            <span>amaruki</span>
+          </a>
+        </div>
+      </header>
+
+      <main class="sch-layout">
+        <!-- Toolbar -->
+        <div class="sch-toolbar">
+          <select id="accountSelect" class="input">
+            <option value="">Loading channels…</option>
+          </select>
+          <button id="refreshBtn" class="btn glass smallBtn">Refresh</button>
+          <a id="studioLink" class="btn ghost smallBtn" href="https://studio.youtube.com" target="_blank" rel="noreferrer"
+             style="display:inline-flex; align-items:center; gap:6px; text-decoration:none;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
+            </svg>
+            YouTube Studio
+          </a>
+          <span id="schStats" class="sch-stats" style="display:none"></span>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="filter-tabs" id="filterTabs">
+          <button class="filter-tab active" data-filter="all">All <span class="tab-count" id="cnt-all"></span></button>
+          <button class="filter-tab" data-filter="public">Public <span class="tab-count" id="cnt-public"></span></button>
+          <button class="filter-tab" data-filter="unlisted">Unlisted <span class="tab-count" id="cnt-unlisted"></span></button>
+          <button class="filter-tab" data-filter="private">Private <span class="tab-count" id="cnt-private"></span></button>
+          <button class="filter-tab" data-filter="scheduled">Scheduled <span class="tab-count" id="cnt-scheduled"></span></button>
+        </div>
+
+        <!-- Content -->
+        <div class="sch-content custom-scrollbar">
+          <div id="schGrid" class="video-grid"></div>
+          <div id="schState" class="sch-state">
+            <div class="spinner"></div>
+            <div class="state-title">Loading videos…</div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script src="/static/scheduled.js"></script>
+  </body>
+</html>
