@@ -914,12 +914,41 @@ def api_youtube_upload():
     if not os.path.exists(file_path):
         return jsonify({"ok": False, "error": "File not found"}), 404
 
+    # YouTube no longer supports standalone tags via the API.
+    # Strategy: fit as many tags as hashtags into the title (max 100 chars),
+    # then append all remaining tags as #hashtags at the end of the description.
+    MAX_TITLE_LEN = 100
+    hashtag_tags = [f"#{t.strip().replace(' ', '')}" for t in tags if t.strip()]
+
+    # Try to append hashtags to the title without exceeding 100 chars
+    title_base = title[:MAX_TITLE_LEN].rstrip()
+    title_tags_used = []
+    remaining_tags = list(hashtag_tags)
+    for ht in hashtag_tags:
+        candidate = title_base + " " + " ".join(title_tags_used + [ht])
+        if len(candidate) <= MAX_TITLE_LEN:
+            title_tags_used.append(ht)
+            remaining_tags.remove(ht)
+        else:
+            break  # no more room
+
+    if title_tags_used:
+        title_final = (title_base + " " + " ".join(title_tags_used)).strip()
+    else:
+        title_final = title_base
+
+    # Append remaining (or all) hashtags to description
+    desc_final = description
+    if hashtag_tags:
+        hashtag_line = " ".join(remaining_tags if title_tags_used else hashtag_tags)
+        desc_final = (description.rstrip() + "\n\n" + hashtag_line).strip()
+
     try:
         video_id = youtube_api.upload_video(
             file_path=file_path,
-            title=title,
-            description=description,
-            tags=tags,
+            title=title_final,
+            description=desc_final,
+            tags=[],
             privacy_status=privacy,
             publish_at=publish_at,
             account_id=account_id,
