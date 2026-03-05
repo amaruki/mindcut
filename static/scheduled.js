@@ -5,14 +5,28 @@
   /* ── State ─────────────────────────────────────────────────────── */
   let allVideos = [];
   let activeFilter = "all";
+  let activeView = "grid"; // 'grid' or 'calendar'
+  
+  // Calendar state
+  let currentMonth = new Date(); // Represents the month currently being viewed
+  currentMonth.setDate(1);
 
   /* ── DOM refs ───────────────────────────────────────────────────── */
   const accountSelect = document.getElementById("accountSelect");
   const refreshBtn    = document.getElementById("refreshBtn");
   const schGrid       = document.getElementById("schGrid");
+  const schCalendar   = document.getElementById("schCalendar");
   const schState      = document.getElementById("schState");
   const schStats      = document.getElementById("schStats");
   const filterTabs    = document.querySelectorAll(".filter-tab");
+  const viewBtns      = document.querySelectorAll(".view-btn");
+  
+  // Calendar DOM refs
+  const calDateGrid   = document.getElementById("calDateGrid");
+  const calMonthYear  = document.getElementById("calMonthYear");
+  const calPrevBtn    = document.getElementById("calPrevBtn");
+  const calNextBtn    = document.getElementById("calNextBtn");
+  const calTodayBtn   = document.getElementById("calTodayBtn");
 
   /* ── Init ───────────────────────────────────────────────────────── */
   loadAccounts().then(() => loadVideos());
@@ -25,8 +39,32 @@
       filterTabs.forEach(t => t.classList.remove("active"));
       tab.classList.add("active");
       activeFilter = tab.dataset.filter;
-      renderGrid();
+      renderActiveView();
     });
+  });
+
+  viewBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      viewBtns.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      activeView = btn.dataset.view;
+      renderActiveView();
+    });
+  });
+
+  // Calendar Controls
+  calPrevBtn.addEventListener("click", () => {
+    currentMonth.setMonth(currentMonth.getMonth() - 1);
+    renderActiveView();
+  });
+  calNextBtn.addEventListener("click", () => {
+    currentMonth.setMonth(currentMonth.getMonth() + 1);
+    renderActiveView();
+  });
+  calTodayBtn.addEventListener("click", () => {
+    currentMonth = new Date();
+    currentMonth.setDate(1);
+    renderActiveView();
   });
 
   /* ── Accounts ───────────────────────────────────────────────────── */
@@ -53,9 +91,9 @@
 
   /* ── Load Videos ────────────────────────────────────────────────── */
   async function loadVideos() {
-    schGrid.innerHTML = "";
     schGrid.style.display = "none";
-    schState.style.display = "flex";
+    schCalendar.classList.remove("active");
+    schState.classList.add("active");
     schState.innerHTML = `<div class="spinner"></div><div class="state-title">Loading videos…</div>`;
     schStats.style.display = "none";
 
@@ -69,13 +107,13 @@
     }
 
     try {
-      const res = await fetch(`/api/youtube/videos?account_id=${encodeURIComponent(accountId)}`);
+      const res = await fetch(`/api/youtube/videos?account_id=${encodeURIComponent(accountId)}&max_results=200`);
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Unknown error");
 
       allVideos = data.videos || [];
       updateCounts();
-      renderGrid();
+      renderActiveView();
     } catch (e) {
       schState.innerHTML = `
         ${iconWarn()}
@@ -110,14 +148,15 @@
   }
 
   /* ── Render ─────────────────────────────────────────────────────── */
-  function renderGrid() {
+  function renderActiveView() {
     const filtered = activeFilter === "all"
       ? allVideos
       : allVideos.filter(v => resolvedStatus(v) === activeFilter);
 
-    if (!filtered.length) {
+    if (!filtered.length && activeView === "grid") {
       schGrid.style.display = "none";
-      schState.style.display = "flex";
+      schCalendar.classList.remove("active");
+      schState.classList.add("active");
       if (!allVideos.length) {
         schState.innerHTML = `
           ${iconCamera()}
@@ -133,12 +172,103 @@
       return;
     }
 
-    schState.style.display = "none";
-    schGrid.style.display  = "grid";
-    schGrid.innerHTML = filtered.map(videoCard).join("");
+    // Hide empty state if there is anything to render
+    schState.classList.remove("active");
+
+    if (activeView === "grid") {
+      schCalendar.classList.remove("active");
+      schGrid.style.display = "grid";
+      schGrid.innerHTML = filtered.map(videoCard).join("");
+    } else {
+      schGrid.style.display = "none";
+      schCalendar.classList.add("active");
+      renderCalendar(filtered);
+    }
 
     schStats.textContent = `${filtered.length} video${filtered.length !== 1 ? "s" : ""}${activeFilter !== "all" ? ` · ${activeFilter}` : ""}`;
     schStats.style.display = "block";
+  }
+
+  function renderCalendar(filteredVideos) {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    
+    // Set Header
+    calMonthYear.textContent = currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+    // Calculate dates
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startingDay = firstDay.getDay(); // 0 = Sunday
+    const totalDays = lastDay.getDate();
+
+    // Group videos by date string "YYYY-MM-DD"
+    const videosByDate = {};
+    filteredVideos.forEach(v => {
+      // Use publishAt if scheduled, else publishedAt
+      const status = resolvedStatus(v);
+      const targetDateStr = (status === "scheduled" && v.publishAt) ? v.publishAt : v.publishedAt;
+      if (!targetDateStr) return;
+
+      const dateObj = new Date(targetDateStr);
+      if (isNaN(dateObj)) return;
+
+      const y = dateObj.getFullYear();
+      const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const d = String(dateObj.getDate()).padStart(2, '0');
+      const dateKey = `${y}-${m}-${d}`;
+
+      if (!videosByDate[dateKey]) videosByDate[dateKey] = [];
+      videosByDate[dateKey].push(v);
+    });
+
+    // Build the grid HTML
+    let cellsHtml = '';
+    
+    // Blank cells before start of month
+    for (let i = 0; i < startingDay; i++) {
+        cellsHtml += '<div class="cal-cell empty"></div>';
+    }
+
+    const today = new Date();
+    
+    // Cells for each day of month
+    for (let i = 1; i <= totalDays; i++) {
+        const dStr = String(i).padStart(2, '0');
+        const mStr = String(month + 1).padStart(2, '0');
+        const dateKey = `${year}-${mStr}-${dStr}`;
+        
+        const isToday = today.getDate() === i && today.getMonth() === month && today.getFullYear() === year;
+        
+        const dayVideos = videosByDate[dateKey] || [];
+        // Sort day videos by time explicitly (earliest first)
+        dayVideos.sort((a,b) => {
+           const ta = new Date((resolvedStatus(a) === "scheduled" && a.publishAt) ? a.publishAt : a.publishedAt).getTime();
+           const tb = new Date((resolvedStatus(b) === "scheduled" && b.publishAt) ? b.publishAt : b.publishedAt).getTime();
+           return ta - tb;
+        });
+
+        const vidsHtml = dayVideos.map(v => {
+            const status = resolvedStatus(v);
+            const ytUrl = `https://www.youtube.com/watch?v=${v.id}`;
+            return `
+              <a href="${ytUrl}" target="_blank" rel="noreferrer" class="cal-video-item" title="${escHtml(v.title)}">
+                <span class="status-dot ${status}"></span>
+                ${v.thumbnail ? `<img src="${escHtml(v.thumbnail)}" class="cal-video-thumb" alt="">` : ''}
+                <span class="cal-video-title">${escHtml(v.title)}</span>
+              </a>
+            `;
+        }).join("");
+
+        cellsHtml += `
+            <div class="cal-cell ${isToday ? 'today' : ''}">
+                <div class="cal-date-num">${i}</div>
+                <div class="cal-videos custom-scrollbar">${vidsHtml}</div>
+            </div>
+        `;
+    }
+
+    calDateGrid.innerHTML = cellsHtml;
   }
 
   function videoCard(v) {
