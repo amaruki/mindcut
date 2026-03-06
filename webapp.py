@@ -201,6 +201,7 @@ def run_scan_job(job_id, payload):
             raise ValueError("URL kosong")
 
         mode = payload.get("mode") or "heatmap"
+        max_clips = safe_int(payload.get("max_clips"), 10)
         ai_api_url = (payload.get("ai_api_url") or "").strip()
         ai_model = (payload.get("ai_model") or "").strip()
         ai_api_key = (payload.get("ai_api_key") or "").strip()
@@ -287,6 +288,7 @@ def run_scan_job(job_id, payload):
                     video_description,
                     custom_prompt=ai_prompt,
                     heatmap_segments=heatmap_segments,
+                    max_clips=max_clips,
                 )
             else:
                 segments = heatmap_segments
@@ -603,10 +605,58 @@ def api_preview():
         return jsonify({"ok": False, "error": str(e)}), 400
 
 
+@app.post("/api/settings/extract-cookies")
+def api_extract_cookies():
+    data = request.get_json(silent=True) or {}
+    browser = (data.get("browser") or "").strip()
+    if not browser or browser == "none":
+        return jsonify({"ok": False, "error": "Please select a valid browser."}), 400
+
+    try:
+        cmd = [
+            "yt-dlp",
+            "--cookies",
+            "cookies.txt",
+            "--cookies-from-browser",
+            browser,
+            "--skip-download",
+            "--flat-playlist",
+            "--playlist-items",
+            "0",
+            "https://www.youtube.com",
+        ]
+        res = subprocess.run(cmd, capture_output=True, text=True)
+        if res.returncode != 0:
+            err = (res.stderr or res.stdout or "").strip()
+            return jsonify({"ok": False, "error": f"Failed to extract: {err}"}), 400
+
+        if not os.path.exists("cookies.txt"):
+            return jsonify(
+                {"ok": False, "error": "Extracted but cookies.txt was not created."}
+            ), 500
+
+        # Verify it has contents
+        size = os.path.getsize("cookies.txt")
+        if size < 10:
+            return jsonify(
+                {"ok": False, "error": "cookies.txt is empty. Are you logged in?"}
+            ), 400
+
+        return jsonify(
+            {
+                "ok": True,
+                "message": "Cookies extracted and saved to cookies.txt successfully.",
+            }
+        )
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.post("/api/analyze-transcript")
 def api_analyze_transcript():
     data = request.get_json(silent=True) or {}
     url = (data.get("url") or "").strip()
+    max_clips = safe_int(data.get("max_clips"), 10)
     ai_api_url = (data.get("ai_api_url") or "").strip()
     ai_model = (data.get("ai_model") or "").strip()
     ai_api_key = (data.get("ai_api_key") or "").strip()
@@ -647,6 +697,7 @@ def api_analyze_transcript():
         video_description,
         custom_prompt=ai_prompt,
         heatmap_segments=heatmap_segments,
+        max_clips=max_clips,
     )
 
     total_duration = core.get_duration(video_id)

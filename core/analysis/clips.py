@@ -45,7 +45,11 @@ MAX_SEGMENTS_PER_BATCH = 50
 
 # Path where per-clip performance feedback is appended.
 # Each line is JSON: {"predicted": float, "actual_views": int, "actual_retention": float, ...}
-PERFORMANCE_LOG_PATH = Path(config.DATA_DIR) / "clip_performance.jsonl" if hasattr(config, "DATA_DIR") else None
+PERFORMANCE_LOG_PATH = (
+    Path(config.DATA_DIR) / "clip_performance.jsonl"
+    if hasattr(config, "DATA_DIR")
+    else None
+)
 
 # Default fusion weights (used when no performance log exists yet)
 _DEFAULT_WEIGHTS = {
@@ -152,11 +156,51 @@ def _emotion_score(text: str) -> float:
 # ---------------------------------------------------------------------------
 
 _CONTENT_TYPE_SIGNALS: dict[str, list[str]] = {
-    "comedy":      ["joke", "lol", "funny", "prank", "roast", "meme", "humor", "laugh", "hilarious"],
-    "educational": ["explain", "how to", "tutorial", "learn", "tip", "strategy", "guide", "step", "because"],
-    "reaction":    ["reacting", "first time", "watching", "oh my", "i can't", "did you see"],
-    "commentary":  ["think about it", "here's the thing", "my opinion", "the real problem", "nobody talks"],
-    "story":       ["so i was", "true story", "this happened", "back in", "i remember", "one day"],
+    "comedy": [
+        "joke",
+        "lol",
+        "funny",
+        "prank",
+        "roast",
+        "meme",
+        "humor",
+        "laugh",
+        "hilarious",
+    ],
+    "educational": [
+        "explain",
+        "how to",
+        "tutorial",
+        "learn",
+        "tip",
+        "strategy",
+        "guide",
+        "step",
+        "because",
+    ],
+    "reaction": [
+        "reacting",
+        "first time",
+        "watching",
+        "oh my",
+        "i can't",
+        "did you see",
+    ],
+    "commentary": [
+        "think about it",
+        "here's the thing",
+        "my opinion",
+        "the real problem",
+        "nobody talks",
+    ],
+    "story": [
+        "so i was",
+        "true story",
+        "this happened",
+        "back in",
+        "i remember",
+        "one day",
+    ],
 }
 
 _IDEAL_DURATION_BY_TYPE: dict[str, tuple[float, float]] = {
@@ -211,31 +255,39 @@ def _load_fusion_weights() -> dict:
 
         # Simple correlation proxy: mean absolute contribution to actual_retention
         def _corr(key: str) -> float:
-            pairs = [(e[key], e["actual_retention"]) for e in entries if key in e and "actual_retention" in e]
+            pairs = [
+                (e[key], e["actual_retention"])
+                for e in entries
+                if key in e and "actual_retention" in e
+            ]
             if not pairs:
                 return 0.0
             xs, ys = zip(*pairs)
             mx, my = sum(xs) / len(xs), sum(ys) / len(ys)
             num = sum((x - mx) * (y - my) for x, y in pairs)
-            den = math.sqrt(sum((x - mx) ** 2 for x in xs) * sum((y - my) ** 2 for y in ys))
+            den = math.sqrt(
+                sum((x - mx) ** 2 for x in xs) * sum((y - my) ** 2 for y in ys)
+            )
             return num / den if den else 0.0
 
-        corr_ai        = max(0.01, _corr("ai"))
-        corr_heatmap   = max(0.01, _corr("heatmap"))
+        corr_ai = max(0.01, _corr("ai"))
+        corr_heatmap = max(0.01, _corr("heatmap"))
         corr_heuristic = max(0.01, _corr("heuristic"))
         total = corr_ai + corr_heatmap + corr_heuristic
 
         weights = {
-            "ai":        round(corr_ai / total, 3),
-            "heatmap":   round(corr_heatmap / total, 3),
+            "ai": round(corr_ai / total, 3),
+            "heatmap": round(corr_heatmap / total, 3),
             "heuristic": round(corr_heuristic / total, 3),
         }
         # Fallback weights keep default ratio but renormalise
         hf_total = weights["heatmap"] + weights["heuristic"]
-        weights["heatmap_fallback"]   = round(weights["heatmap"] / hf_total, 3)
+        weights["heatmap_fallback"] = round(weights["heatmap"] / hf_total, 3)
         weights["heuristic_fallback"] = round(weights["heuristic"] / hf_total, 3)
 
-        print(f"[weights] Loaded empirical fusion weights from {len(entries)} samples: {weights}")
+        print(
+            f"[weights] Loaded empirical fusion weights from {len(entries)} samples: {weights}"
+        )
         return weights
 
     except Exception as e:
@@ -280,6 +332,7 @@ def log_clip_performance(
 # DATACLASS
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ClipCandidate:
     segment_indices: list[int]
@@ -313,6 +366,7 @@ class ClipCandidate:
 # HELPERS
 # ---------------------------------------------------------------------------
 
+
 def _fmt_time(seconds: float) -> str:
     m, s = divmod(int(seconds), 60)
     h, m = divmod(m, 60)
@@ -344,11 +398,11 @@ def _safe_json(raw: str) -> tuple[list | dict | None, bool]:
         fragment = raw[arr_start:]
         last_complete = fragment.rfind("}")
         if last_complete > 0:
-            trimmed = fragment[:last_complete + 1].rstrip(", \n\r\t") + "]"
+            trimmed = fragment[: last_complete + 1].rstrip(", \n\r\t") + "]"
             try:
                 result = json.loads(trimmed)
                 if isinstance(result, list) and result:
-                    return result, True   # ← repaired flag
+                    return result, True  # ← repaired flag
             except json.JSONDecodeError:
                 pass
     return None, False
@@ -358,7 +412,10 @@ def _safe_json(raw: str) -> tuple[list | dict | None, bool]:
 # HEURISTIC SCORING  (fixes #1, #5, #8, #11)
 # ---------------------------------------------------------------------------
 
-def _heuristic_score(text: str, duration: float, content_type: str = "unknown") -> dict[str, float]:
+
+def _heuristic_score(
+    text: str, duration: float, content_type: str = "unknown"
+) -> dict[str, float]:
     t = text.lower()
     words = t.split()
 
@@ -373,7 +430,9 @@ def _heuristic_score(text: str, duration: float, content_type: str = "unknown") 
     emo_score = _emotion_score(t)
 
     # Content-type-aware duration score (fix #5)
-    ideal_min, ideal_max = _IDEAL_DURATION_BY_TYPE.get(content_type, _IDEAL_DURATION_BY_TYPE["unknown"])
+    ideal_min, ideal_max = _IDEAL_DURATION_BY_TYPE.get(
+        content_type, _IDEAL_DURATION_BY_TYPE["unknown"]
+    )
     if ideal_min <= duration <= ideal_max:
         duration_score = 0.20
     elif duration < ideal_min:
@@ -400,16 +459,18 @@ def _heuristic_score(text: str, duration: float, content_type: str = "unknown") 
     else:
         speech_rate_score = 0.0
 
-    combined = min(1.0, keyword_score + emo_score + duration_score + hook_score + speech_rate_score)
+    combined = min(
+        1.0, keyword_score + emo_score + duration_score + hook_score + speech_rate_score
+    )
 
     return {
-        "keyword_score":     round(keyword_score, 3),
-        "emotion_score":     round(emo_score, 3),
-        "duration_score":    round(duration_score, 3),
-        "hook_score":        round(hook_score, 3),
+        "keyword_score": round(keyword_score, 3),
+        "emotion_score": round(emo_score, 3),
+        "duration_score": round(duration_score, 3),
+        "hook_score": round(hook_score, 3),
         "speech_rate_score": round(speech_rate_score, 3),
-        "words_per_sec":     round(wps, 2),
-        "combined":          round(combined, 3),
+        "words_per_sec": round(wps, 2),
+        "combined": round(combined, 3),
     }
 
 
@@ -431,16 +492,34 @@ def _heatmap_overlap_score(start: float, end: float, heatmap_segments: list) -> 
 # SEGMENT MERGING WITH COHERENCE GUARD  (fix #6)
 # ---------------------------------------------------------------------------
 
+
 def _word_overlap_ratio(text_a: str, text_b: str) -> float:
     """Rough lexical overlap — prevents merging totally unrelated sentences."""
     words_a = set(text_a.lower().split())
     words_b = set(text_b.lower().split())
     # Remove very common stop words that always overlap
-    stops = {"the", "a", "an", "is", "are", "was", "and", "or", "i", "it", "to", "of", "in", "that", "this", "you"}
+    stops = {
+        "the",
+        "a",
+        "an",
+        "is",
+        "are",
+        "was",
+        "and",
+        "or",
+        "i",
+        "it",
+        "to",
+        "of",
+        "in",
+        "that",
+        "this",
+        "you",
+    }
     words_a -= stops
     words_b -= stops
     if not words_a or not words_b:
-        return 1.0   # too short to judge — allow merge
+        return 1.0  # too short to judge — allow merge
     union = words_a | words_b
     intersection = words_a & words_b
     return len(intersection) / len(union)
@@ -476,18 +555,18 @@ def _merge_segments(transcript_segments: list) -> list[ClipCandidate]:
 
     for i, seg in enumerate(transcript_segments):
         seg_start = float(seg.get("start", 0))
-        seg_dur   = float(seg.get("duration", 0))
-        seg_end   = seg_start + seg_dur
-        seg_text  = seg.get("text", "").strip()
+        seg_dur = float(seg.get("duration", 0))
+        seg_end = seg_start + seg_dur
+        seg_text = seg.get("text", "").strip()
 
         if current_start is None:
             current_start = seg_start
-            current_end   = seg_end
+            current_end = seg_end
             current_indices = [i]
-            current_texts   = [seg_text]
+            current_texts = [seg_text]
             continue
 
-        gap     = seg_start - current_end
+        gap = seg_start - current_end
         new_dur = seg_end - current_start
 
         # Time proximity check
@@ -504,9 +583,9 @@ def _merge_segments(transcript_segments: list) -> list[ClipCandidate]:
         else:
             flush(current_indices, current_texts, current_start, current_end)
             current_start = seg_start
-            current_end   = seg_end
+            current_end = seg_end
             current_indices = [i]
-            current_texts   = [seg_text]
+            current_texts = [seg_text]
 
     flush(current_indices, current_texts, current_start, current_end)
     return candidates
@@ -727,19 +806,19 @@ def _build_clips_text(candidates: list[ClipCandidate]) -> str:
 
 def _build_full_transcript_context(transcript_segments: list[dict]) -> str:
     """Build the complete transcript for AI context.
-    
+
     Groups transcript into time-chunked paragraphs so the AI can understand
     the full narrative flow of the video, not just isolated fragments.
     No truncation — the AI receives the entire transcript for maximum context.
     """
     if not transcript_segments:
         return "(no transcript available)"
-    
+
     lines = []
     chunk_texts = []
     chunk_start = 0.0
     chunk_end = 0.0
-    
+
     for seg in transcript_segments:
         seg_start = float(seg.get("start", 0))
         seg_dur = float(seg.get("duration", 0))
@@ -747,25 +826,28 @@ def _build_full_transcript_context(transcript_segments: list[dict]) -> str:
         seg_text = seg.get("text", "").strip()
         if not seg_text:
             continue
-        
+
         if not chunk_texts:
             chunk_start = seg_start
-        
+
         chunk_texts.append(seg_text)
         chunk_end = seg_end
-        
+
         # Flush every ~30 seconds of content
         if chunk_end - chunk_start >= 30 or seg == transcript_segments[-1]:
             paragraph = " ".join(chunk_texts)
-            lines.append(f"[{_fmt_time(chunk_start)}–{_fmt_time(chunk_end)}] {paragraph}")
+            lines.append(
+                f"[{_fmt_time(chunk_start)}–{_fmt_time(chunk_end)}] {paragraph}"
+            )
             chunk_texts = []
-    
+
     return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
 # STAGE 1: AI DISCOVERY — find interesting moments from full transcript
 # ---------------------------------------------------------------------------
+
 
 def _call_ai_discovery(
     transcript_segments: list[dict],
@@ -792,7 +874,9 @@ def _call_ai_discovery(
         language=language,
         full_transcript=full_transcript,
         max_candidates=max_candidates,
-        custom_instructions=(f"\nCustom instructions:\n{custom_prompt}" if custom_prompt else ""),
+        custom_instructions=(
+            f"\nCustom instructions:\n{custom_prompt}" if custom_prompt else ""
+        ),
     )
 
     headers = {
@@ -803,7 +887,7 @@ def _call_ai_discovery(
         "model": config.discover_ai_model(),
         "messages": [
             {"role": "system", "content": _AI_SYSTEM_PROMPT},
-            {"role": "user",   "content": prompt},
+            {"role": "user", "content": prompt},
         ],
         "temperature": 0.5,
     }
@@ -827,11 +911,15 @@ def _call_ai_discovery(
                 print("  [discovery] JSON was repaired (truncated response)")
 
             if parsed is None:
-                raise ValueError(f"Could not parse JSON from AI response (len={len(raw)})")
+                raise ValueError(
+                    f"Could not parse JSON from AI response (len={len(raw)})"
+                )
             if isinstance(parsed, dict):
                 parsed = [parsed]
             if not isinstance(parsed, list):
-                raise ValueError(f"AI returned unexpected type: {type(parsed).__name__}")
+                raise ValueError(
+                    f"AI returned unexpected type: {type(parsed).__name__}"
+                )
 
             # Validate and clean candidates
             valid = []
@@ -842,24 +930,32 @@ def _call_ai_discovery(
                     s = float(item.get("start", 0))
                     e = float(item.get("end", 0))
                     if e > s and (e - s) >= IDEAL_CLIP_MIN_SEC:
-                        valid.append({
-                            "start": s,
-                            "end": e,
-                            "duration": e - s,
-                            "hook_line": item.get("hook_line", ""),
-                            "signal_type": item.get("signal_type", ""),
-                            "why_interesting": item.get("why_interesting", ""),
-                        })
+                        valid.append(
+                            {
+                                "start": s,
+                                "end": e,
+                                "duration": e - s,
+                                "hook_line": item.get("hook_line", ""),
+                                "signal_type": item.get("signal_type", ""),
+                                "why_interesting": item.get("why_interesting", ""),
+                            }
+                        )
                 except (TypeError, ValueError):
                     continue
 
             print(f"  [discovery] AI found {len(valid)} candidate moments")
             return valid
 
-        except (requests.RequestException, ValueError, KeyError, IndexError, TypeError) as e:
+        except (
+            requests.RequestException,
+            ValueError,
+            KeyError,
+            IndexError,
+            TypeError,
+        ) as e:
             print(f"  [discovery] attempt {attempt + 1} failed: {e}")
             if attempt < 2:
-                time.sleep(2 ** attempt)
+                time.sleep(2**attempt)
 
     return []
 
@@ -867,6 +963,7 @@ def _call_ai_discovery(
 # ---------------------------------------------------------------------------
 # STAGE 2: AI SCORING  (score & rank candidates from discovery)
 # ---------------------------------------------------------------------------
+
 
 def _call_ai(
     candidates: list[ClipCandidate],
@@ -885,7 +982,7 @@ def _call_ai(
     """
     results: dict[int, dict] = {}
     batches = [
-        candidates[i:i + MAX_SEGMENTS_PER_BATCH]
+        candidates[i : i + MAX_SEGMENTS_PER_BATCH]
         for i in range(0, len(candidates), MAX_SEGMENTS_PER_BATCH)
     ]
 
@@ -894,8 +991,12 @@ def _call_ai(
 
         # Dominant content type across this batch
         batch_content_type = (
-            max(set(c.content_type for c in batch), key=lambda t: sum(1 for c in batch if c.content_type == t))
-            if batch else content_type
+            max(
+                set(c.content_type for c in batch),
+                key=lambda t: sum(1 for c in batch if c.content_type == t),
+            )
+            if batch
+            else content_type
         )
 
         prompt = _AI_USER_TEMPLATE.format(
@@ -908,7 +1009,9 @@ def _call_ai(
             full_transcript=full_transcript_context or "(not available)",
             clips_text=clips_text,
             min_score=MIN_VIRAL_SCORE,
-            custom_instructions=(f"\nCustom instructions:\n{custom_prompt}" if custom_prompt else ""),
+            custom_instructions=(
+                f"\nCustom instructions:\n{custom_prompt}" if custom_prompt else ""
+            ),
         )
 
         headers = {
@@ -919,7 +1022,7 @@ def _call_ai(
             "model": config.discover_ai_model(),
             "messages": [
                 {"role": "system", "content": _AI_SYSTEM_PROMPT},
-                {"role": "user",   "content": prompt},
+                {"role": "user", "content": prompt},
             ],
             "temperature": 0.4,
         }
@@ -933,34 +1036,52 @@ def _call_ai(
                 resp_json = resp.json()
                 choices = resp_json.get("choices", [])
                 if not choices:
-                    raise ValueError(f"AI returned no choices: {list(resp_json.keys())}")
+                    raise ValueError(
+                        f"AI returned no choices: {list(resp_json.keys())}"
+                    )
                 raw = choices[0].get("message", {}).get("content", "")
                 if not raw:
                     raise ValueError("AI returned empty content")
 
-                parsed, was_repaired = _safe_json(raw)   # fix #10
+                parsed, was_repaired = _safe_json(raw)  # fix #10
                 if was_repaired:
-                    print(f"  [ai] batch {batch_offset + 1}: JSON was repaired (truncated response)")
+                    print(
+                        f"  [ai] batch {batch_offset + 1}: JSON was repaired (truncated response)"
+                    )
 
                 if parsed is None:
-                    raise ValueError(f"Could not parse JSON from AI response (len={len(raw)})")
+                    raise ValueError(
+                        f"Could not parse JSON from AI response (len={len(raw)})"
+                    )
                 if isinstance(parsed, dict):
                     parsed = [parsed]
                 if not isinstance(parsed, list):
-                    raise ValueError(f"AI returned unexpected type: {type(parsed).__name__}")
+                    raise ValueError(
+                        f"AI returned unexpected type: {type(parsed).__name__}"
+                    )
 
-                for item in parsed:
-                    if not isinstance(item, dict):
-                        continue
-                    local_idx  = item.get("clip_index", 0) - 1
+                valid_items = [item for item in parsed if isinstance(item, dict)]
+                for local_seq_idx, item in enumerate(valid_items):
+                    local_idx = item.get("clip_index", 0) - 1
+                    if local_idx < 0 or local_idx >= len(batch):
+                        local_idx = local_seq_idx  # Fallback to sequential index
                     global_idx = batch_offset * MAX_SEGMENTS_PER_BATCH + local_idx
-                    results[global_idx] = item
+                    if global_idx < len(candidates):
+                        results[global_idx] = item
                 break
 
-            except (requests.RequestException, ValueError, KeyError, IndexError, TypeError) as e:
-                print(f"  [ai] batch {batch_offset + 1}, attempt {attempt + 1} failed: {e}")
+            except (
+                requests.RequestException,
+                ValueError,
+                KeyError,
+                IndexError,
+                TypeError,
+            ) as e:
+                print(
+                    f"  [ai] batch {batch_offset + 1}, attempt {attempt + 1} failed: {e}"
+                )
                 if attempt < 2:
-                    time.sleep(2 ** attempt)
+                    time.sleep(2**attempt)
 
     return results
 
@@ -968,6 +1089,7 @@ def _call_ai(
 # ---------------------------------------------------------------------------
 # SCORE FUSION  (fix #2 — uses adaptive weights)
 # ---------------------------------------------------------------------------
+
 
 def _fuse_scores(
     heuristic: float,
@@ -978,15 +1100,15 @@ def _fuse_scores(
 ) -> float:
     if has_ai:
         return round(
-            ai        * weights["ai"] +
-            heatmap   * weights["heatmap"] +
-            heuristic * weights["heuristic"],
+            ai * weights["ai"]
+            + heatmap * weights["heatmap"]
+            + heuristic * weights["heuristic"],
             4,
         )
     else:
         return round(
-            heatmap   * weights["heatmap_fallback"] +
-            heuristic * weights["heuristic_fallback"],
+            heatmap * weights["heatmap_fallback"]
+            + heuristic * weights["heuristic_fallback"],
             4,
         )
 
@@ -995,6 +1117,7 @@ def _fuse_scores(
 # NMS DEDUPLICATION  (fix #9)
 # ---------------------------------------------------------------------------
 
+
 def _time_overlap_ratio(a: ClipCandidate, b: ClipCandidate) -> float:
     """Fraction of the shorter clip's duration that overlaps with the other."""
     overlap = max(0, min(a.end_time, b.end_time) - max(a.start_time, b.start_time))
@@ -1002,7 +1125,9 @@ def _time_overlap_ratio(a: ClipCandidate, b: ClipCandidate) -> float:
     return overlap / shorter_dur if shorter_dur > 0 else 0.0
 
 
-def _nms_filter(candidates: list[ClipCandidate], overlap_threshold: float = NMS_OVERLAP_THRESHOLD) -> list[ClipCandidate]:
+def _nms_filter(
+    candidates: list[ClipCandidate], overlap_threshold: float = NMS_OVERLAP_THRESHOLD
+) -> list[ClipCandidate]:
     """
     Non-maximum suppression: if a lower-scored clip overlaps a higher-scored clip
     by more than overlap_threshold, suppress the lower-scored one.
@@ -1011,8 +1136,7 @@ def _nms_filter(candidates: list[ClipCandidate], overlap_threshold: float = NMS_
     kept: list[ClipCandidate] = []
     for candidate in candidates:
         suppressed = any(
-            _time_overlap_ratio(candidate, k) > overlap_threshold
-            for k in kept
+            _time_overlap_ratio(candidate, k) > overlap_threshold for k in kept
         )
         if not suppressed:
             kept.append(candidate)
@@ -1023,6 +1147,7 @@ def _nms_filter(candidates: list[ClipCandidate], overlap_threshold: float = NMS_
 # PRE-FILTER  (fix #4 — ratio-based)
 # ---------------------------------------------------------------------------
 
+
 def _compute_top_n(total: int) -> int:
     n = max(PRE_FILTER_MIN, int(total * PRE_FILTER_RATIO))
     return min(n, PRE_FILTER_MAX)
@@ -1032,6 +1157,7 @@ def _compute_top_n(total: int) -> int:
 # MAIN PIPELINE
 # ---------------------------------------------------------------------------
 
+
 def analyze_transcript_with_ai(
     transcript_segments: list[dict],
     video_title: str = "",
@@ -1039,9 +1165,10 @@ def analyze_transcript_with_ai(
     custom_prompt: str = "",
     heatmap_segments: list | None = None,
     # New metadata params (fix #7)
-    channel_size_tier: str = "unknown",   # "small" | "medium" | "large" | "unknown"
-    editing_style: str = "unknown",       # "talking-head" | "heavily-edited" | "b-roll-heavy" | "podcast"
+    channel_size_tier: str = "unknown",  # "small" | "medium" | "large" | "unknown"
+    editing_style: str = "unknown",  # "talking-head" | "heavily-edited" | "b-roll-heavy" | "podcast"
     captions_available: bool = True,
+    max_clips: int = 10,
 ) -> list[dict]:
     """
     Full pipeline: heuristic → heatmap → (AI) → fuse → NMS → rank → return clips.
@@ -1060,7 +1187,9 @@ def analyze_transcript_with_ai(
         List of clip dicts sorted by final_score descending.
     """
     heatmap_segments = heatmap_segments or []
-    custom_prompt    = (custom_prompt or getattr(config, "AI_SEGMENT_PROMPT", "") or "").strip()
+    custom_prompt = (
+        custom_prompt or getattr(config, "AI_SEGMENT_PROMPT", "") or ""
+    ).strip()
 
     # ── 1. Load adaptive weights ────────────────────────────────────────────
     weights = _load_fusion_weights()
@@ -1082,13 +1211,15 @@ def analyze_transcript_with_ai(
 
     # ── 5. Heatmap score ───────────────────────────────────────────────────
     for c in candidates:
-        c.heatmap_score = _heatmap_overlap_score(c.start_time, c.end_time, heatmap_segments)
+        c.heatmap_score = _heatmap_overlap_score(
+            c.start_time, c.end_time, heatmap_segments
+        )
 
     # ── 6. Determine Candidates (AI Discovery vs Heuristic Pre-filter) ─────
     top_candidates = []
     rest_candidates = []
     ai_results: dict[int, dict] = {}
-    
+
     # Dominant content type across full video (for AI prompt)
     all_types = [c.content_type for c in candidates]
     dominant_type = max(set(all_types), key=all_types.count) if all_types else "unknown"
@@ -1105,7 +1236,7 @@ def analyze_transcript_with_ai(
                 content_type=dominant_type,
                 editing_style=editing_style,
             )
-            
+
             # Convert discovered timestamps into ClipCandidates
             for idx, dr in enumerate(discovery_results):
                 # Build a text block for this candidate from original transcript
@@ -1117,11 +1248,11 @@ def analyze_transcript_with_ai(
                     s_end = s_start + s_dur
                     if s_end > c_start and s_start < c_end:
                         c_text_parts.append(seg.get("text", ""))
-                
+
                 c_text = " ".join(c_text_parts)
                 c_dur = c_end - c_start
                 c_type = _detect_content_type(c_text)
-                
+
                 # Create a fresh candidate matching the AI's discovered segment
                 cand = ClipCandidate(
                     segment_indices=[],
@@ -1134,15 +1265,19 @@ def analyze_transcript_with_ai(
                 dims = _heuristic_score(cand.text, cand.duration, cand.content_type)
                 cand.dimension_scores.update(dims)
                 cand.heuristic_score = dims["combined"]
-                cand.heatmap_score = _heatmap_overlap_score(cand.start_time, cand.end_time, heatmap_segments)
+                cand.heatmap_score = _heatmap_overlap_score(
+                    cand.start_time, cand.end_time, heatmap_segments
+                )
                 top_candidates.append(cand)
-            
-            print(f"[pipeline] Stage 1 finished. {len(top_candidates)} candidates created from discovery.")
-            
+
+            print(
+                f"[pipeline] Stage 1 finished. {len(top_candidates)} candidates created from discovery."
+            )
+
         except Exception as e:
             print(f"[pipeline] Stage 1 (Discovery) failed: {e}")
-            top_candidates = [] # fallback to heuristic
-            
+            top_candidates = []  # fallback to heuristic
+
         # STAGE 2: Scoring
         if top_candidates:
             full_transcript_ctx = _build_full_transcript_context(transcript_segments)
@@ -1160,86 +1295,102 @@ def analyze_transcript_with_ai(
                 )
             except Exception as e:
                 print(f"[pipeline] Stage 2 (Scoring) skipped: {e}")
-                
+
     # Fallback if AI disabled or Stage 1 failed (old heuristic approach)
     if not top_candidates:
         pre_scored = sorted(
             candidates,
-            key=lambda c: _fuse_scores(c.heuristic_score, c.heatmap_score, 0, False, weights),
+            key=lambda c: _fuse_scores(
+                c.heuristic_score, c.heatmap_score, 0, False, weights
+            ),
             reverse=True,
         )
         n_top = _compute_top_n(len(pre_scored))
-        top_candidates  = pre_scored[:n_top]
+        top_candidates = pre_scored[:n_top]
         rest_candidates = pre_scored[n_top:]
-        print(f"[pipeline] Fallback to heuristic pre-filter. {len(candidates)} candidates → top {n_top} selected.")
+        print(
+            f"[pipeline] Fallback to heuristic pre-filter. {len(candidates)} candidates → top {n_top} selected."
+        )
 
     # ── 7. Apply AI results & fuse final scores ────────────────────────────
     for i, c in enumerate(top_candidates):
         ai_data = ai_results.get(i, {})
-        has_ai  = bool(ai_data)
+        has_ai = bool(ai_data)
 
-        c.ai_score    = float(ai_data.get("viral_score", 0.0))
-        c.final_score = _fuse_scores(c.heuristic_score, c.heatmap_score, c.ai_score, has_ai, weights)
+        c.ai_score = float(ai_data.get("viral_score", 0.0))
+        c.final_score = _fuse_scores(
+            c.heuristic_score, c.heatmap_score, c.ai_score, has_ai, weights
+        )
 
-        c.hook_preview       = ai_data.get("hook_preview", "")
-        c.clip_reason        = ai_data.get("clip_reason", "")
+        c.hook_preview = ai_data.get("hook_preview", "")
+        c.clip_reason = ai_data.get("clip_reason", "")
         c.suggested_clip_title = ai_data.get("suggested_clip_title", "")
-        c.platform_fit       = ai_data.get("platform_fit", [])
+        c.platform_fit = ai_data.get("platform_fit", [])
 
         # Apply AI-suggested boundary adjustments (trimming notes)
         suggested_start = ai_data.get("suggested_start")
-        suggested_end   = ai_data.get("suggested_end")
+        suggested_end = ai_data.get("suggested_end")
         if suggested_start is not None and suggested_end is not None:
             try:
                 s_start = float(suggested_start)
-                s_end   = float(suggested_end)
-                s_dur   = s_end - s_start
+                s_end = float(suggested_end)
+                s_dur = s_end - s_start
                 # Sanity: non-negative start, end after start, minimum duration
                 if s_start >= 0 and s_dur >= IDEAL_CLIP_MIN_SEC:
                     if s_start != c.start_time or s_end != c.end_time:
-                        print(f"  [ai] Clip {i+1}: adjusted boundaries "
-                              f"{_fmt_time(c.start_time)}–{_fmt_time(c.end_time)} → "
-                              f"{_fmt_time(s_start)}–{_fmt_time(s_end)}")
+                        print(
+                            f"  [ai] Clip {i + 1}: adjusted boundaries "
+                            f"{_fmt_time(c.start_time)}–{_fmt_time(c.end_time)} → "
+                            f"{_fmt_time(s_start)}–{_fmt_time(s_end)}"
+                        )
                     c.start_time = s_start
-                    c.end_time   = s_end
-                    c.duration   = s_dur
+                    c.end_time = s_end
+                    c.duration = s_dur
             except (TypeError, ValueError):
                 pass
 
-        c.dimension_scores.update({
-            "hook":       ai_data.get("hook_score", 0.0),
-            "standalone": ai_data.get("standalone_score", 0.0),
-            "emotion":    ai_data.get("emotion_score", 0.0),
-            "replay":     ai_data.get("replay_score", 0.0),
-            "trend":      ai_data.get("trend_score", 0.0),
-            "arc":        ai_data.get("arc_score", 0.0),  # updated field name
-            "combined":   c.final_score,
-        })
+        c.dimension_scores.update(
+            {
+                "hook": ai_data.get("hook_score", 0.0),
+                "standalone": ai_data.get("standalone_score", 0.0),
+                "emotion": ai_data.get("emotion_score", 0.0),
+                "replay": ai_data.get("replay_score", 0.0),
+                "trend": ai_data.get("trend_score", 0.0),
+                "arc": ai_data.get("arc_score", 0.0),  # updated field name
+                "combined": c.final_score,
+            }
+        )
 
     # ── 8. Heuristic-only candidates ───────────────────────────────────────
     for c in rest_candidates:
-        c.final_score = _fuse_scores(c.heuristic_score, c.heatmap_score, 0, False, weights)
+        c.final_score = _fuse_scores(
+            c.heuristic_score, c.heatmap_score, 0, False, weights
+        )
 
-    # ── 9. Filter by minimum score ─────────────────────────────────────────
-    all_candidates = [c for c in (top_candidates + rest_candidates) if c.final_score >= MIN_VIRAL_SCORE]
+    # ── 9. Sort then NMS deduplication (fix #9) ───────────────────────────
+    all_scored = top_candidates + rest_candidates
+    all_scored.sort(key=lambda c: c.final_score, reverse=True)
+    all_candidates = _nms_filter(all_scored)
 
-    # ── 10. Sort then NMS deduplication (fix #9) ───────────────────────────
-    all_candidates.sort(key=lambda c: c.final_score, reverse=True)
-    all_candidates = _nms_filter(all_candidates)
+    # ── 10. Filter by minimum score with Dynamic Thresholding ──────────────
+    passed = [c for c in all_candidates if c.final_score >= MIN_VIRAL_SCORE]
+    if len(passed) < max_clips:
+        # Fallback to lower threshold if not enough clips
+        passed = [c for c in all_candidates if c.final_score >= 0.30][:max_clips]
 
     return [
         {
-            "start":                 c.start_time,
-            "end":                   c.end_time,
-            "duration":              c.duration,
-            "text":                  c.text,
-            "content_type":          c.content_type,
-            "score":                 c.final_score,
-            "dimension_scores":      c.dimension_scores,
-            "hook_preview":          c.hook_preview,
-            "clip_reason":           c.clip_reason,
-            "suggested_clip_title":  c.suggested_clip_title,
-            "platform_fit":          c.platform_fit,
+            "start": c.start_time,
+            "end": c.end_time,
+            "duration": c.duration,
+            "text": c.text,
+            "content_type": c.content_type,
+            "score": c.final_score,
+            "dimension_scores": c.dimension_scores,
+            "hook_preview": c.hook_preview,
+            "clip_reason": c.clip_reason,
+            "suggested_clip_title": c.suggested_clip_title,
+            "platform_fit": c.platform_fit,
         }
-        for c in all_candidates
+        for c in passed
     ]

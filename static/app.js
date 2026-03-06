@@ -1163,6 +1163,27 @@ $("url")?.addEventListener("keydown", (e) => {
     loadGallery();
   });
 
+  $("extractCookiesBtn")?.addEventListener("click", async () => {
+    const browser = $("cookies_browser")?.value;
+    if (!browser || browser === "none") {
+      alert("Please select a browser to extract cookies from first.");
+      return;
+    }
+    const btn = $("extractCookiesBtn");
+    btn.disabled = true;
+    const oldText = btn.textContent;
+    btn.textContent = "⏳";
+    try {
+      const res = await postJson("/api/settings/extract-cookies", { browser });
+      alert(res.message || "Cookies extracted successfully.");
+    } catch (e) {
+      alert("Error extracting cookies: " + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = oldText;
+    }
+  });
+
 
 currentLang = localStorage.getItem("lang") || document.documentElement.lang || "id";
 currentLang = currentLang === "en" ? "en" : "id";

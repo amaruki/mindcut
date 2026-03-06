@@ -72,11 +72,13 @@ def _merge_heatmap_segments(raw_segments, min_duration=15, gap_tolerance=2.0):
         dur = m["end"] - m["start"]
         if dur < min_duration:
             continue
-        results.append({
-            "start": m["start"],
-            "duration": min(dur, config.MAX_DURATION),
-            "score": m["score"],
-        })
+        results.append(
+            {
+                "start": m["start"],
+                "duration": min(dur, config.MAX_DURATION),
+                "score": m["score"],
+            }
+        )
 
     results.sort(key=lambda x: x["score"], reverse=True)
     return results
@@ -88,13 +90,17 @@ def ambil_most_replayed(video_id):
     Returns a list of high-engagement segments (merged into clip-length chunks).
     """
     print("Reading YouTube heatmap data...")
-    
+
     cmd = [
-        sys.executable, "-m", "yt_dlp",
-        "--skip-download", "-J",
-        f"https://www.youtube.com/watch?v={video_id}"
+        sys.executable,
+        "-m",
+        "yt_dlp",
+        "--skip-download",
+        "-J",
+        "--ignore-no-formats-error",
+        f"https://www.youtube.com/watch?v={video_id}",
     ]
-    
+
     def parse_heatmap_res(stdout_text):
         raw = json.loads(stdout_text)
         item = raw["entries"][0] if "entries" in raw and raw.get("entries") else raw
@@ -108,7 +114,9 @@ def ambil_most_replayed(video_id):
                 if start is not None and end is not None and score is not None:
                     if score >= config.MIN_SCORE:
                         dur = end - start
-                        raw_points.append({"start": start, "duration": dur, "score": score})
+                        raw_points.append(
+                            {"start": start, "duration": dur, "score": score}
+                        )
             if raw_points:
                 return _merge_heatmap_segments(raw_points)
         return None
@@ -116,14 +124,20 @@ def ambil_most_replayed(video_id):
     if config.get_cookie_args():
         cmd_cookies = cmd + config.get_cookie_args()
         try:
-            res = subprocess.run(cmd_cookies, capture_output=True, text=True, timeout=30)
+            res = subprocess.run(
+                cmd_cookies, capture_output=True, text=True, timeout=30
+            )
             if res.returncode == 0:
                 results = parse_heatmap_res(res.stdout)
                 if results:
-                    print(f"Successfully fetched heatmap using yt-dlp with cookies ({len(results)} segments).")
+                    print(
+                        f"Successfully fetched heatmap using yt-dlp with cookies ({len(results)} segments)."
+                    )
                     return results
             else:
-                print(f"Warning: yt-dlp heatmap fetch with cookies failed. Retrying without cookies.")
+                print(
+                    "Warning: yt-dlp heatmap fetch with cookies failed. Retrying without cookies."
+                )
         except Exception as e:
             print(f"Warning: yt-dlp heatmap fetch with cookies raised exception: {e}")
 
@@ -133,7 +147,9 @@ def ambil_most_replayed(video_id):
         if res.returncode == 0:
             results = parse_heatmap_res(res.stdout)
             if results:
-                print(f"Successfully fetched heatmap using yt-dlp without cookies ({len(results)} segments).")
+                print(
+                    f"Successfully fetched heatmap using yt-dlp without cookies ({len(results)} segments)."
+                )
                 return results
     except Exception as e:
         print(f"Warning: yt-dlp heatmap fetch without cookies failed: {e}")
@@ -141,7 +157,7 @@ def ambil_most_replayed(video_id):
     # Fallback to direct request
     url = f"https://www.youtube.com/watch?v={video_id}"
     headers = {"User-Agent": "Mozilla/5.0"}
-    
+
     print("Falling back to manual HTML scraping for heatmap...")
     try:
         html = requests.get(url, headers=headers, timeout=20).text
@@ -149,9 +165,7 @@ def ambil_most_replayed(video_id):
         return []
 
     match = re.search(
-        r'"markers":\s*(\[.*?\])\s*,\s*"?markersMetadata"?',
-        html,
-        re.DOTALL
+        r'"markers":\s*(\[.*?\])\s*,\s*"?markersMetadata"?', html, re.DOTALL
     )
 
     if not match:
@@ -171,11 +185,13 @@ def ambil_most_replayed(video_id):
         try:
             score = float(marker.get("intensityScoreNormalized", 0))
             if score >= config.MIN_SCORE:
-                raw_points.append({
-                    "start": float(marker["startMillis"]) / 1000,
-                    "duration": float(marker["durationMillis"]) / 1000,
-                    "score": score
-                })
+                raw_points.append(
+                    {
+                        "start": float(marker["startMillis"]) / 1000,
+                        "duration": float(marker["durationMillis"]) / 1000,
+                        "score": score,
+                    }
+                )
         except Exception:
             continue
 
@@ -184,33 +200,42 @@ def ambil_most_replayed(video_id):
 
 def download_video(video_id, output_path, progress_hook=None):
     cmd = [
-        sys.executable, "-m", "yt_dlp",
+        sys.executable,
+        "-m",
+        "yt_dlp",
         "--force-ipv4",
-        "--newline", "--no-warnings",
+        "--newline",
+        "--no-warnings",
         "--ignore-no-formats-error",
         # Optimize performance
-        "--concurrent-fragments", "5",
-        "--http-chunk-size", "10M",
-        "--merge-output-format", "mp4",
+        "--concurrent-fragments",
+        "5",
+        "--http-chunk-size",
+        "10M",
+        "--merge-output-format",
+        "mp4",
         "-f",
         "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/bv*[height<=1080]+ba/b[height<=1080]/bv*+ba/b",
-        "-o", output_path,
-        f"https://youtu.be/{video_id}"
+        "-o",
+        output_path,
+        f"https://youtu.be/{video_id}",
     ]
-    
+
     def _run_cmd(cmd_args):
         process = subprocess.Popen(
             cmd_args,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            encoding='utf-8',
-            errors='replace'
+            encoding="utf-8",
+            errors="replace",
         )
         for line in process.stdout:
             # Parse yt-dlp output for progress
             if progress_hook and "[download]" in line and "%" in line:
-                match = re.search(r'\[download\]\s+([\d\.]+)%\s+of.*?(?:at\s+([^\s]+))?', line)
+                match = re.search(
+                    r"\[download\]\s+([\d\.]+)%\s+of.*?(?:at\s+([^\s]+))?", line
+                )
                 if match:
                     try:
                         pct = float(match.group(1))
@@ -218,7 +243,7 @@ def download_video(video_id, output_path, progress_hook=None):
                         progress_hook({"pct": pct, "speed": speed})
                     except ValueError:
                         pass
-        
+
         process.wait()
         if process.returncode != 0:
             raise subprocess.CalledProcessError(process.returncode, cmd_args)
@@ -229,14 +254,16 @@ def download_video(video_id, output_path, progress_hook=None):
         try:
             _run_cmd(cmd_cookies)
             return output_path
-        except subprocess.CalledProcessError as e:
-            print("Warning: Download with cookies failed. Retrying download WITHOUT cookies...")
-        
+        except subprocess.CalledProcessError:
+            print(
+                "Warning: Download with cookies failed. Retrying download WITHOUT cookies..."
+            )
+
     try:
         _run_cmd(cmd)
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"Gagal download video (return_code={e.returncode})")
-        
+
     return output_path
 
 
@@ -251,12 +278,17 @@ def get_duration(video_id):
             "yt_dlp",
             "--skip-download",
             "-J",
-            f"https://youtu.be/{video_id}"
+            "--ignore-no-formats-error",
+            f"https://youtu.be/{video_id}",
         ]
-        
+
         def parse_duration_res(stdout_text):
             raw = json.loads(stdout_text)
-            item = raw["entries"][0] if isinstance(raw, dict) and "entries" in raw and raw.get("entries") else raw
+            item = (
+                raw["entries"][0]
+                if isinstance(raw, dict) and "entries" in raw and raw.get("entries")
+                else raw
+            )
             return int(item.get("duration") or 0)
 
         cookie_args = config.get_cookie_args()
@@ -266,8 +298,10 @@ def get_duration(video_id):
             if res.returncode == 0:
                 return parse_duration_res(res.stdout)
             else:
-                print(f"Warning: get_duration with cookies failed. Retrying without cookies.")
-                
+                print(
+                    "Warning: get_duration with cookies failed. Retrying without cookies."
+                )
+
         res = subprocess.run(cmd, capture_output=True, text=True)
         if res.returncode != 0:
             return 0

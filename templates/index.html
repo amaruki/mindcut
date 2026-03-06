@@ -77,14 +77,17 @@
             
             <div class="row">
               <label class="label" data-i18n="label.cookies_browser">Browser (Cookies)</label>
-              <select id="cookies_browser" class="input">
-                <option value="" selected data-i18n="opt.cookies_browser.none">None (Tanpa login)</option>
-                <option value="chrome">Chrome</option>
-                <option value="edge">Edge</option>
-                <option value="firefox">Firefox</option>
-                <option value="brave">Brave</option>
-                <option value="opera">Opera</option>
-              </select>
+              <div style="display: flex; gap: 8px;">
+                <select id="cookies_browser" class="input" style="flex:1;">
+                  <option value="" selected data-i18n="opt.cookies_browser.none">None (Tanpa login)</option>
+                  <option value="chrome">Chrome</option>
+                  <option value="edge">Edge</option>
+                  <option value="firefox">Firefox</option>
+                  <option value="brave">Brave</option>
+                  <option value="opera">Opera</option>
+                </select>
+                <button id="extractCookiesBtn" class="btn glass" type="button" style="padding: 0 12px; height: 38px;" title="Save Cookies to file">💾</button>
+              </div>
             </div>
 
             <div class="row" style="margin-top: 10px;">

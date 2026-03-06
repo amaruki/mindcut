@@ -1,6 +1,7 @@
 # --- MindCut .gitignore ---
 
 # Output & Downloads
+cookies.txt
 clips/
 downloads/
 images/
