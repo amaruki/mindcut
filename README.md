@@ -19,6 +19,10 @@ Automatically extract viral-ready clips from YouTube videos using heatmap data (
 
 ## 📦 Installation
 
+**Windows Users**: You can simply double-click `start.bat`. It will automatically create a virtual environment (using `uv` if available for speed, or falling back to `python`), install all dependencies, install frontend `npm` packages, and launch both servers.
+
+For manual setup on **macOS/Linux** or Windows:
+
 1. **Clone the repository**:
 
    ```bash
@@ -26,17 +30,27 @@ Automatically extract viral-ready clips from YouTube videos using heatmap data (
    cd youtube-heatmap-clipper
    ```
 
-2. **Create a virtual environment**:
+2. **Backend Setup**:
+   We heavily recommend using [uv](https://docs.astral.sh/uv/) for lightning-fast python management, but `pip` works perfectly too.
 
    ```bash
-   python -m venv .venv
+   # Using uv (Recommended)
+   uv venv .venv
    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   uv pip install -r requirements.txt
+
+   # OR using traditional pip
+   python -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
    ```
 
-3. **Install dependencies**:
+3. **Frontend Setup**:
+   You need [Node.js](https://nodejs.org/) installed to build and run the UI.
 
    ```bash
-   pip install -r requirements.txt
+   cd frontend
+   npm install
    ```
 
 4. **Environment Setup**:
@@ -47,18 +61,27 @@ Automatically extract viral-ready clips from YouTube videos using heatmap data (
 
 ## 🖥️ Usage
 
-You can start the web interface using either the Python script or the provided batch file (Windows).
+**Option 1: Windows Batch File (Recommended)**
+Double-click `start.bat`. It will automatically launch:
 
-**Option 1: Python**
+1. The Vite React Frontend on `http://127.0.0.1:5173`
+2. The Flask Backend API on `http://127.0.0.1:5000`
+
+**Option 2: Manual Start (Two Terminals)**
+
+Terminal 1 (Backend):
 
 ```bash
-python run.py
+source .venv/bin/activate
+python webapp.py
 ```
 
-**Option 2: Batch File**
-Double-click `start.bat`.
+Terminal 2 (Frontend):
 
-The application will be available at `http://127.0.0.1:5000`.
+```bash
+cd frontend
+npm run dev
+```
 
 ## 🛠️ Development Setup
 
@@ -68,12 +91,13 @@ If you want to contribute or customize **MindCut**, follow these steps to set up
 
 MindCut relies on several external tools and libraries:
 
+- **Node.js**: Required to run the Vite server and build the React SPA.
 - **FFmpeg**: Required for all video processing (cropping, merging, subtitles).
   - **Windows**: `winget install Gyan.FFmpeg`
   - **macOS**: `brew install ffmpeg`
   - **Linux**: `sudo apt install ffmpeg`
 - **Faster-Whisper**: The application automatically downloads models (default is `small`) on the first run of a subtitle task. Ensure you have ~500MB+ of disk space.
-- **Python Packages**: Re-install or update via `pip install -r requirements.txt`.
+- **Python Packages**: Quickly manage dependencies with [uv](https://docs.astral.sh/uv/) via `uv pip install -r requirements.txt`.
 
 ### 2. YouTube API & Credentials
 

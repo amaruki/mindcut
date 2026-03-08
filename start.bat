@@ -12,28 +12,32 @@ echo(
 
 set "VENV_DIR=.venv"
 set "PYTHON_CMD="
+set "USE_UV=0"
+
+:: Check if uv is installed
+where uv >nul 2>nul
+if %errorlevel% equ 0 set "USE_UV=1"
 
 if exist "%VENV_DIR%\Scripts\python.exe" set "PYTHON_CMD=%VENV_DIR%\Scripts\python.exe"
 if defined PYTHON_CMD goto :DEPS
 
 echo [*] Virtual Environment tidak ditemukan.
-echo [*] Mencoba membuat venv baru dengan Python 3.11...
-
-py -3.11 --version >nul 2>nul
-if errorlevel 1 goto :TRY_SYSTEM_PY
-
-echo [OK] Python 3.11 ditemukan. Membuat venv...
-py -3.11 -m venv "%VENV_DIR%"
-if errorlevel 1 goto :VENV_FAIL
-goto :SET_PY
-
-:TRY_SYSTEM_PY
-echo [WARN] Python 3.11 tidak ditemukan di system.
-echo [*] Menggunakan default 'python' system...
-python --version >nul 2>nul
-if errorlevel 1 goto :NO_PY
-python -m venv "%VENV_DIR%"
-if errorlevel 1 goto :VENV_FAIL
+if "%USE_UV%"=="1" (
+    echo [*] Menggunakan 'uv' untuk membuat venv...
+    uv venv "%VENV_DIR%"
+    if errorlevel 1 goto :VENV_FAIL
+) else (
+    echo [*] 'uv' tidak ditemukan. Menggunakan 'python' bawaan system...
+    py -3.11 --version >nul 2>nul
+    if not errorlevel 1 (
+        echo [OK] Python 3.11 ditemukan. Membuat venv...
+        py -3.11 -m venv "%VENV_DIR%"
+    ) else (
+        echo [WARN] Python 3.11 tidak ditemukan di system. Menggunakan default 'python'...
+        python -m venv "%VENV_DIR%"
+    )
+    if errorlevel 1 goto :VENV_FAIL
+)
 
 :SET_PY
 if not exist "%VENV_DIR%\Scripts\python.exe" goto :VENV_FAIL
@@ -43,8 +47,12 @@ echo [OK] Venv berhasil dibuat.
 :DEPS
 echo(
 echo [*] Checking ^& Installing dependencies...
-"%PYTHON_CMD%" -m pip install --upgrade pip >nul
-"%PYTHON_CMD%" -m pip install -r requirements.txt
+if "%USE_UV%"=="1" (
+    uv pip install -r requirements.txt --python "%PYTHON_CMD%"
+) else (
+    "%PYTHON_CMD%" -m pip install --upgrade pip >nul
+    "%PYTHON_CMD%" -m pip install -r requirements.txt
+)
 if errorlevel 1 goto :REQ_FAIL
 
 echo [*] Checking AI Subtitle dependencies (faster-whisper)...
@@ -55,7 +63,11 @@ goto :RUN
 
 :INSTALL_FWHISPER
 echo [*] Installing faster-whisper...
-"%PYTHON_CMD%" -m pip install faster-whisper
+if "%USE_UV%"=="1" (
+    uv pip install faster-whisper --python "%PYTHON_CMD%"
+) else (
+    "%PYTHON_CMD%" -m pip install faster-whisper
+)
 if errorlevel 1 (
     echo [WARN] Gagal install faster-whisper. Fitur subtitle mungkin tidak jalan.
     echo        (Biasanya karena versi Python tidak kompatibel/preview version^)

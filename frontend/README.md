@@ -1,16 +1,40 @@
-# React + Vite
+# YouTube Heatmap Clipper - Frontend SPA Architecture
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Overview
 
-Currently, two official plugins are available:
+The application's frontend has been refactored from static HTML/JS template files rendered by Jinja2 into a modern **Vite + React Single Page Application (SPA)**.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### Key Technologies
 
-## React Compiler
+- **React 18:** Component-based UI rendering.
+- **Vite:** Blazing fast development server and optimized build tool.
+- **React Router DOM (HashRouter):** Client-side routing.
+- **Flask:** Backend API server, now serving the static SPA assets.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Running the Application
 
-## Expanding the ESLint configuration
+A single command orchestrates the entire full-stack app locally in development mode:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+start.bat
+```
+
+This script will:
+
+1. Open a terminal to run `npm run dev` in the `frontend/` directory (starts the Vite dev server on port `5173`).
+2. Run the `webapp.py` Flask backend on port `5000`.
+
+The applications will automatically proxy requests. In development, open `http://localhost:5173`.
+API requests sent to `/api/*` and `/clips/*` by the Vite frontend are routed seamlessly to the Flask backend running on `5000`.
+
+## Building for Production
+
+To build the SPA for production (or Electron):
+
+```bash
+cd frontend
+npm run build
+```
+
+Vite will compile and bundle the React app into the `frontend/dist` directory. Flask is configured in `webapp.py` to serve this `dist` folder as its static root.
+Once built, running `python webapp.py` alone will serve the fully functional production application at `http://localhost:5000`.

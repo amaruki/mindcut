@@ -11,7 +11,7 @@ import time
 import uuid
 from types import SimpleNamespace
 
-from flask import Blueprint, jsonify, render_template, request, send_from_directory
+from flask import Blueprint, jsonify, request, send_from_directory
 
 import core
 from core import config
@@ -72,16 +72,6 @@ def get_preview(url):
     preview_cache.set(key, preview)
 
     return preview
-
-
-@bp.get("/")
-def index():
-    return render_template("index.html")
-
-
-@bp.get("/settings")
-def settings_page():
-    return render_template("settings.html")
 
 
 @bp.get("/assets/fonts/<path:filename>")
@@ -518,16 +508,6 @@ def api_youtube_upload():
                 }
             ), 429
         return jsonify({"ok": False, "error": error_msg}), 500
-
-
-@bp.get("/upload-manager")
-def upload_manager():
-    return render_template("upload_manager.html")
-
-
-@bp.get("/scheduled")
-def scheduled_page():
-    return render_template("scheduled.html")
 
 
 @bp.get("/api/youtube/videos")
