@@ -72,12 +72,22 @@ echo   Jika belum, install manual via PowerShell (Administrator^):
 echo       winget install Gyan.FFmpeg
 echo.
 echo   Semua siap! Menjalankan Web App...
-echo   Buka browser di: http://127.0.0.1:5000
+echo   Buka browser di: http://127.0.0.1:5173 (Frontend SPA^)
+echo                    http://127.0.0.1:5000 (Backend API^)
 echo ===================================================
 echo(
 
 if defined YHC_CHECK_ONLY goto :DONE
 
+:: Check if frontend exists and start it in a separate window
+if exist "frontend\package.json" (
+    echo [*] Starting Frontend Server (Vite^)...
+    start "MindCut Frontend (Vite)" cmd /c "cd frontend && npm install && npm run dev"
+) else (
+    echo [WARN] Frontend folder not found. Skipping Vite start.
+)
+
+:: Start Backend
 "%PYTHON_CMD%" webapp.py
 goto :DONE
 
