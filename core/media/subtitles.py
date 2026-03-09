@@ -15,8 +15,13 @@ def escape_subtitles_filter_dir(path):
 
 
 def build_subtitle_force_style():
-    alignment = "2" if config.SUBTITLE_LOCATION == "bottom" else "5"
-    margin_v = "40" if config.SUBTITLE_LOCATION == "bottom" else "0"
+    # Use Alignment=2 (Bottom Center text) for both cases to ensure consistent horizontal centering
+    alignment = "2"
+
+    # FFmpeg converts SRT to ASS internally using a PlayResY of 288.
+    # Therefore, MarginV must be relative to 288, not the actual 1920 height!
+    # MarginV=40 is ~14% from bottom. MarginV=100 is ~35% from bottom (lower-middle).
+    margin_v = "40" if config.SUBTITLE_LOCATION == "bottom" else "100"
     return (
         f"FontName={config.SUBTITLE_FONT},FontSize=12,Bold=1,"
         f"PrimaryColour=&HFFFFFF,OutlineColour=&H000000,"
@@ -40,7 +45,9 @@ def generate_subtitle(video_file, subtitle_file, event_hook=None):
             except Exception:
                 pass
         print(f"  Loading Faster-Whisper model '{config.WHISPER_MODEL}'...")
-        print(f"  (If this is first time, downloading ~{get_model_size(config.WHISPER_MODEL)}...)")
+        print(
+            f"  (If this is first time, downloading ~{get_model_size(config.WHISPER_MODEL)}...)"
+        )
         model = WhisperModel(config.WHISPER_MODEL, device="cpu", compute_type="int8")
         print("  OK Model loaded. Transcribing audio with word-level timestamps...")
         if callable(event_hook):
@@ -50,7 +57,6 @@ def generate_subtitle(video_file, subtitle_file, event_hook=None):
                 pass
         segments, info = model.transcribe(
             video_file,
-            language="en",
             word_timestamps=True,
         )
         return segments
@@ -61,8 +67,12 @@ def generate_subtitle(video_file, subtitle_file, event_hook=None):
         msg = str(e)
         if os.name == "nt" and "WinError 1314" in msg:
             print(f"  Failed to generate subtitle: {msg}")
-            print("  Windows kamu kelihatan tidak mengizinkan symlink (HuggingFace cache).")
-            print("  Retrying sekali lagi (biasanya langsung beres setelah fallback cache aktif)...")
+            print(
+                "  Windows kamu kelihatan tidak mengizinkan symlink (HuggingFace cache)."
+            )
+            print(
+                "  Retrying sekali lagi (biasanya langsung beres setelah fallback cache aktif)..."
+            )
             try:
                 segments = load_and_transcribe()
             except Exception as e2:
@@ -85,20 +95,24 @@ def generate_subtitle(video_file, subtitle_file, event_hook=None):
             for w in segment.words:
                 word_text = w.word.strip()
                 if word_text:
-                    all_words.append({
-                        "start": w.start,
-                        "end": w.end,
-                        "text": word_text,
-                    })
+                    all_words.append(
+                        {
+                            "start": w.start,
+                            "end": w.end,
+                            "text": word_text,
+                        }
+                    )
         else:
             # Fallback: if no word-level timestamps, use segment-level
             text = segment.text.strip()
             if text:
-                all_words.append({
-                    "start": segment.start,
-                    "end": segment.end,
-                    "text": text,
-                })
+                all_words.append(
+                    {
+                        "start": segment.start,
+                        "end": segment.end,
+                        "text": text,
+                    }
+                )
 
     if not all_words:
         print("  No words detected in audio.")
@@ -108,15 +122,17 @@ def generate_subtitle(video_file, subtitle_file, event_hook=None):
     WORDS_PER_CHUNK = 3
     chunks = []
     for i in range(0, len(all_words), WORDS_PER_CHUNK):
-        group = all_words[i:i + WORDS_PER_CHUNK]
+        group = all_words[i : i + WORDS_PER_CHUNK]
         chunk_text = " ".join(w["text"] for w in group)
         chunk_start = group[0]["start"]
         chunk_end = group[-1]["end"]
-        chunks.append({
-            "start": chunk_start,
-            "end": chunk_end,
-            "text": chunk_text,
-        })
+        chunks.append(
+            {
+                "start": chunk_start,
+                "end": chunk_end,
+                "text": chunk_text,
+            }
+        )
 
     print(f"  Writing {len(chunks)} subtitle chunks ({len(all_words)} words)...")
     with open(subtitle_file, "w", encoding="utf-8") as f:

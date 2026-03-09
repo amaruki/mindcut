@@ -50,22 +50,34 @@ function scanStageLabel(stage) {
 }
 
 export default function EditorStudio() {
-  const [url, setUrl] = useState("");
+  const [url, setUrl] = useState(() => sessionStorage.getItem('es_url') || "");
   const [mode, setMode] = useState(localStorage.getItem("yt_config_mode") || "heatmap");
   const [cookiesBrowser, setCookiesBrowser] = useState(localStorage.getItem("yt_config_cookies_browser") || "");
-  const [customStart, setCustomStart] = useState("");
-  const [customEnd, setCustomEnd] = useState("");
+  const [customStart, setCustomStart] = useState(() => sessionStorage.getItem('es_customStart') || "");
+  const [customEnd, setCustomEnd] = useState(() => sessionStorage.getItem('es_customEnd') || "");
   
-  const [preview, setPreview] = useState(null);
+  const [preview, setPreview] = useState(() => {
+    const v = sessionStorage.getItem('es_preview');
+    return v && v !== "undefined" ? JSON.parse(v) : null;
+  });
   const [busy, setBusy] = useState(false);
   
   // Scan State
-  const [scanJobId, setScanJobId] = useState("");
+  const [scanJobId, setScanJobId] = useState(() => sessionStorage.getItem('es_scanJobId') || "");
   const [scanProgress, setScanProgress] = useState(null); // { pct, text }
-  const [segments, setSegments] = useState([]);
-  const [selectedSegments, setSelectedSegments] = useState(new Set());
-  const [metadata, setMetadata] = useState(null);
-  const [scanWarning, setScanWarning] = useState("");
+  const [segments, setSegments] = useState(() => {
+    const v = sessionStorage.getItem('es_segments');
+    return v && v !== "undefined" ? JSON.parse(v) : [];
+  });
+  const [selectedSegments, setSelectedSegments] = useState(() => {
+    const v = sessionStorage.getItem('es_selectedSegments');
+    return v && v !== "undefined" ? new Set(JSON.parse(v)) : new Set();
+  });
+  const [metadata, setMetadata] = useState(() => {
+    const v = sessionStorage.getItem('es_metadata');
+    return v && v !== "undefined" ? JSON.parse(v) : null;
+  });
+  const [scanWarning, setScanWarning] = useState(() => sessionStorage.getItem('es_scanWarning') || "");
   
   // Clip Job State
   const [clipJob, setClipJob] = useState(null);
@@ -73,6 +85,19 @@ export default function EditorStudio() {
 
   // Modal State
   const [modalContent, setModalContent] = useState(null); // { title, element }
+
+  // Persist State to Session Storage
+  useEffect(() => {
+    sessionStorage.setItem('es_url', url);
+    sessionStorage.setItem('es_customStart', customStart);
+    sessionStorage.setItem('es_customEnd', customEnd);
+    sessionStorage.setItem('es_preview', JSON.stringify(preview));
+    sessionStorage.setItem('es_scanJobId', scanJobId);
+    sessionStorage.setItem('es_segments', JSON.stringify(segments));
+    sessionStorage.setItem('es_selectedSegments', JSON.stringify(Array.from(selectedSegments)));
+    sessionStorage.setItem('es_metadata', JSON.stringify(metadata));
+    sessionStorage.setItem('es_scanWarning', scanWarning);
+  }, [url, customStart, customEnd, preview, scanJobId, segments, selectedSegments, metadata, scanWarning]);
 
   useEffect(() => {
     localStorage.setItem("yt_config_mode", mode);
@@ -131,10 +156,10 @@ export default function EditorStudio() {
   const readPayload = () => {
     const defaults = {
       ratio: "9:16", crop: "default", padding: 10, max_clips: 6,
-      subtitle: "n", whisper_model: "small", subtitle_font_select: "Plus Jakarta Sans",
+      subtitle: "y", whisper_model: "small", subtitle_font_select: "Plus Jakarta Sans",
       subtitle_font_custom: "", subtitle_location: "bottom", subtitle_fontsdir: "fonts",
       ai_api_url: "", ai_model: "gpt-4o", ai_api_key: "", ai_prompt: "", ai_metadata_prompt: "",
-      hook_enabled: "n", hook_voice: "en-US-GuyNeural", hook_voice_rate: "+15%", hook_voice_pitch: "+5Hz", hook_font_size: 72
+      hook_enabled: "y", hook_voice: "en-US-GuyNeural", hook_voice_rate: "+15%", hook_voice_pitch: "+5Hz", hook_font_size: 72
     };
     const getVal = (id) => {
       const l = localStorage.getItem(`yt_config_${id}`);
