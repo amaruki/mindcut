@@ -436,6 +436,8 @@ def _download_section_ytdlp(
         "--newline",
         "--no-warnings",
         "--ignore-no-formats-error",
+        "--extractor-args",
+        "youtube:player_client=android_vr,ios,android,tv,web",
         "--download-sections",
         f"*{start}-{end}",
         "--merge-output-format",

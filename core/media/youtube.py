@@ -207,6 +207,8 @@ def download_video(video_id, output_path, progress_hook=None):
         "--newline",
         "--no-warnings",
         "--ignore-no-formats-error",
+        "--extractor-args",
+        "youtube:player_client=android_vr,ios,android,tv,web",
         # Optimize performance
         "--concurrent-fragments",
         "5",
