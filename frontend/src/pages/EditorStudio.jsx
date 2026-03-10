@@ -457,9 +457,9 @@ export default function EditorStudio() {
     let content;
     if (isYoutube) {
       const u = `https://www.youtube.com/embed/${encodeURIComponent(src)}?start=${start}${end > start ? `&end=${end}` : ""}&autoplay=1&playsinline=1&rel=0`;
-      content = <iframe src={u} className="embed" allow="autoplay; encrypted-media; fullscreen" allowFullScreen></iframe>;
+      content = <iframe src={u} className="w-full aspect-video border-none" allow="autoplay; encrypted-media; fullscreen" allowFullScreen></iframe>;
     } else {
-      content = <video className="video" src={src} controls autoPlay muted playsInline></video>;
+      content = <video className="w-auto max-w-full max-h-[80vh] object-contain shadow-2xl" src={src} controls autoPlay muted playsInline></video>;
     }
     setModalContent({ title, element: content });
   };
